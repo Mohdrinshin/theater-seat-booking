@@ -132,4 +132,15 @@ export class SeatManager {
     const hit = raycaster.intersectObjects(this.group.children, false)[0];
     return hit?.object?.userData?.instanceSeatIds?.[hit.instanceId];
   }
+
+  dispose() {
+    this.group.traverse((object) => {
+      object.geometry?.dispose();
+      if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose());
+      else object.material?.dispose();
+    });
+    this.group.removeFromParent();
+    this.byId.clear();
+    this.selected.clear();
+  }
 }

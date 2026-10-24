@@ -2,6 +2,8 @@ import {
   createHall, getDesigns, getHalls, ownerLogin, ownerRegister,
   publishHall, saveHall, saveLayout,
 } from '../api.js';
+import { createTheater } from '../theater/scene.js';
+import { SeatManager } from '../theater/seats.js';
 
 const escapeHtml = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ROWS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'.split('');
@@ -11,6 +13,7 @@ export function createBuilder(root, onExit) {
     token: localStorage.getItem('theater-owner-token') || '',
     register: true, designs: [], halls: [], hall: null, sections: [], seats: [],
     designId: null, sectionIndex: 0, message: '', error: '', placing: false,
+    preview3d: false, preview: null, colorOverrides: {},
     form: { name: 'New auditorium', room_width: 24, room_depth: 30, room_height: 12,
       screen: { width: 16, height: 7, curve: 0, x: 0, y: 4.2, z: 0, aspect: 16 / 7 } },
   };
@@ -45,6 +48,11 @@ export function createBuilder(root, onExit) {
   }
 
   function draw() {
+    if (state.preview) {
+      state.preview.seats.dispose();
+      state.preview.theater.dispose();
+      state.preview = null;
+    }
     if (!state.token) {
       root.innerHTML = `<div class="builder-auth"><button class="builder-back" data-action="exit">← Theater</button>
         <div class="builder-auth-card"><span class="studio-kicker">PVR · HALL BUILDER</span><h1>${state.register ? 'Create owner account' : 'Owner sign in'}</h1>
@@ -69,7 +77,7 @@ export function createBuilder(root, onExit) {
         <div class="field-pair"><label class="field-label">Screen X · m<input type="number" step="0.5" data-screen="x" value="${form.screen.x || 0}"></label><label class="field-label">Screen Y · m<input type="number" step="0.5" data-screen="y" value="${form.screen.y}"></label></div>
         <label class="field-label">Screen Z · m<input type="number" step="0.5" data-screen="z" value="${form.screen.z || 0}"></label>
         <label class="field-label">Seat design</label><div class="design-list">${state.designs.map((d) => `<button class="design-choice ${Number(state.designId) === d.id ? 'selected' : ''}" data-design="${d.id}"><span class="design-dot" style="background:${escapeHtml(d.default_colors?.cushion || '#a21a28')}"></span><span><b>${escapeHtml(d.name)}</b><small>${d.width} × ${d.depth} m · ${d.capacity} ${d.capacity === 1 ? 'seat' : 'seats'}</small></span></button>`).join('')}</div>
-        <label class="field-label">Cushion color<input type="color" data-color value="${escapeHtml(selectedDesign?.default_colors?.cushion || '#a21a28')}"></label>
+        <div class="color-slots">${['cushion', 'frame', 'accent'].map((slot) => `<label class="field-label">${slot}<input type="color" data-color="${slot}" value="${escapeHtml(state.colorOverrides?.[slot] || selectedDesign?.default_colors?.[slot] || '#a21a28')}"></label>`).join('')}</div>
         <div class="field-pair"><label class="field-label">Row label<input id="row-label" maxlength="8" value="${escapeHtml(nextRow())}"></label><label class="field-label">Section<select id="section-select">${state.sections.map((s, i) => `<option value="${i}" ${state.sectionIndex === i ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}</select></label></div>
         <label class="field-label">Seats in generated row<input id="row-count" type="number" min="1" max="40" value="12"></label>
         <button class="outline-button full-width" data-action="add-row">Generate row</button>
@@ -77,13 +85,24 @@ export function createBuilder(root, onExit) {
         <div class="section-card"><div class="section-head"><b>Sections and base prices</b><button data-action="add-section" aria-label="Add section">+</button></div>${state.sections.map((s, i) => `<div class="section-row"><input data-section-name="${i}" value="${escapeHtml(s.name)}" aria-label="Section name"><input data-section-price="${i}" type="number" min="0" step="0.01" value="${s.base_price}" aria-label="Base price"><input data-section-color="${i}" type="color" value="${escapeHtml(s.color)}" aria-label="Section color"></div>`).join('')}</div>
         <div class="builder-actions"><button class="gold-button" data-action="save">Save draft</button><button class="publish-button" data-action="publish" ${state.hall?.status === 'published' ? 'disabled' : ''}>${state.hall?.status === 'published' ? 'Published' : 'Publish hall'}</button></div>
         ${state.error ? `<p class="builder-error">${escapeHtml(state.error)}</p>` : ''}
-      </aside><main class="builder-workspace"><div class="workspace-title"><div><b>${escapeHtml(form.name || 'Untitled hall')}</b><span>${form.room_width} m × ${form.room_depth} m · ${state.seats.length} seats</span></div><span class="draft-pill">${state.hall?.status || 'unsaved draft'}</span></div>
-        <div class="floor-wrap"><div class="editor-screen" style="width:${Math.min(80, (form.screen.width / form.room_width) * 100)}%">SCREEN · ${form.screen.width} × ${form.screen.height} m</div>
+      </aside><main class="builder-workspace"><div class="workspace-title"><div><b>${escapeHtml(form.name || 'Untitled hall')}</b><span>${form.room_width} m × ${form.room_depth} m · ${state.seats.length} seats</span></div><div class="workspace-actions"><button class="outline-button" data-action="toggle-preview">${state.preview3d ? '2D plan' : '3D preview'}</button><span class="draft-pill">${state.hall?.status || 'unsaved draft'}</span></div></div>
+        <div class="floor-wrap">${state.preview3d
+          ? `<div class="builder-preview-stage" id="builder-preview"></div><div class="preview-actions"><button class="outline-button" data-action="preview-orbit">Orbit room</button><button class="outline-button" data-action="preview-seat" ${state.seats.length ? '' : 'disabled'}>View from first seat</button></div>`
+          : `<div class="editor-screen" style="width:${Math.min(80, (form.screen.width / form.room_width) * 100)}%">SCREEN · ${form.screen.width} × ${form.screen.height} m</div>
           <div class="editor-floor ${state.placing ? 'placing-mode' : ''}" id="editor-floor" style="aspect-ratio:${form.room_width}/${form.room_depth}">${state.seats.map(buttonSeatMarkup).join('')}
-          ${state.seats.length === 0 ? '<div class="floor-hint">Generate rows or click to place seats</div>' : ''}</div></div>
-        <div class="editor-footer"><span>Click a seat to remove it</span><span>${state.placing ? 'Click an empty spot to place a seat' : 'Screen at the top · room coordinates in metres'}</span></div>
+          ${state.seats.length === 0 ? '<div class="floor-hint">Generate rows or click to place seats</div>' : ''}</div>`}</div>
+        <div class="editor-footer"><span>${state.preview3d ? 'Drag to orbit · scroll to zoom' : 'Click a seat to remove it'}</span><span>${state.placing && !state.preview3d ? 'Click an empty spot to place a seat' : 'Screen at the top · room coordinates in metres'}</span></div>
       </main></div>`;
     bind();
+    if (state.preview3d) {
+      const theater = createTheater(root.querySelector('#builder-preview'), {
+        room: { width: Number(form.room_width), depth: Number(form.room_depth), height: Number(form.room_height) },
+        screen: form.screen,
+      });
+      const manager = new SeatManager(theater.scene);
+      manager.build(state.seats.map((seat) => ({ ...seat, status: 'available', design: state.designs.find((d) => d.id === seat.design_id)?.key })));
+      state.preview = { theater, seats: manager };
+    }
   }
 
   function nextRow() {
@@ -141,6 +160,9 @@ export function createBuilder(root, onExit) {
       if (action === 'logout') { localStorage.removeItem('theater-owner-token'); state.token = ''; draw(); }
       if (action === 'add-row') addRow();
       if (action === 'place') { state.placing = !state.placing; draw(); }
+      if (action === 'toggle-preview') { state.preview3d = !state.preview3d; draw(); }
+      if (action === 'preview-orbit') state.preview?.theater.orbitView();
+      if (action === 'preview-seat' && state.seats.length) state.preview?.theater.seatView(state.seats[0]);
       if (action === 'add-section') { state.sections.push({ name: `Section ${state.sections.length + 1}`, base_price: 0, color: '#8c1520' }); draw(); }
       if (action === 'save') await save(false);
       if (action === 'publish') await save(true);
@@ -160,7 +182,9 @@ export function createBuilder(root, onExit) {
       state.form.screen.aspect = state.form.screen.width / state.form.screen.height;
       draw();
     }));
-    root.querySelector('[data-color]')?.addEventListener('change', (event) => { state.cushionColor = event.target.value; });
+    root.querySelectorAll('[data-color]').forEach((input) => input.addEventListener('change', () => {
+      state.colorOverrides = { ...(state.colorOverrides || {}), [input.dataset.color]: input.value };
+    }));
     root.querySelector('#section-select')?.addEventListener('change', (event) => { state.sectionIndex = Number(event.target.value); });
     root.querySelectorAll('[data-section-name]').forEach((input) => input.addEventListener('change', () => { state.sections[Number(input.dataset.sectionName)].name = input.value; }));
     root.querySelectorAll('[data-section-price]').forEach((input) => input.addEventListener('change', () => { state.sections[Number(input.dataset.sectionPrice)].base_price = Number(input.value); }));
@@ -185,7 +209,7 @@ export function createBuilder(root, onExit) {
       })) + 1;
       const label = design.capacity > 1 ? `${row}${number}-${number + design.capacity - 1}` : `${row}${number}`;
       state.seats.push({ row_label: row, seat_number: number, label, x, y: 0, z,
-        rotation_y: 0, design_id: design.id, sectionIndex: state.sectionIndex, colors: { ...design.default_colors, ...(state.cushionColor ? { cushion: state.cushionColor } : {}) }, is_active: true });
+        rotation_y: 0, design_id: design.id, sectionIndex: state.sectionIndex, colors: { ...design.default_colors, ...(state.colorOverrides || {}) }, is_active: true });
       draw();
     });
   }
@@ -210,7 +234,7 @@ export function createBuilder(root, onExit) {
         x: -totalWidth / 2 + offset + design.width / 2, y: rowDepth * 0.25,
         z: Math.min(state.form.room_depth - design.depth / 2, Math.max(design.depth / 2, 4 + rowDepth * (design.depth + 0.45))),
         rotation_y: 0, design_id: design.id, sectionIndex: state.sectionIndex,
-        colors: { ...design.default_colors, ...(state.cushionColor ? { cushion: state.cushionColor } : {}) }, is_active: true });
+        colors: { ...design.default_colors, ...(state.colorOverrides || {}) }, is_active: true });
     }
     state.error = ''; draw();
   }
@@ -224,5 +248,5 @@ export function createBuilder(root, onExit) {
     } catch (error) { state.error = error.message; draw(); }
   }
   init();
-  return { destroy() { root.innerHTML = ''; } };
+  return { destroy() { if (state.preview) { state.preview.seats.dispose(); state.preview.theater.dispose(); } root.innerHTML = ''; } };
 }

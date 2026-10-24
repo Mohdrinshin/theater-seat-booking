@@ -37,6 +37,7 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color
 .field-label input:focus, .field-label select:focus { border-color: #c7a545; }
 .field-label input[type=color], .section-row input[type=color] { width: 42px; height: 36px; padding: 3px; background: #202127; border: 1px solid #363740; border-radius: 7px; }
 .field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.color-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
 .design-list { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: -5px 0 14px; }
 .design-choice { min-height: 58px; display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px; color: #ddd; background: #1c1d23; border: 1px solid #303139; border-radius: 8px; cursor: pointer; }
 .design-choice.selected { border-color: #c7a545; box-shadow: inset 0 0 0 1px #c7a545; }
@@ -67,7 +68,12 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color
 .workspace-title b { font-size: 18px; }
 .workspace-title span { color: #90919a; font-size: 12px; }
 .workspace-title .draft-pill { padding: 6px 10px; color: #c6b47d; border: 1px solid #50472f; border-radius: 30px; background: #211f19; text-transform: capitalize; }
+.workspace-actions { display: flex; align-items: center; gap: 10px; }
 .floor-wrap { max-width: 1100px; margin: auto; padding: 18px 20px 20px; background: radial-gradient(ellipse at 50% 18%, #222129 0, #14151a 72%); border: 1px solid #33343c; border-radius: 12px; }
+.builder-preview-stage { width: 100%; height: min(68vh, 740px); min-height: 380px; overflow: hidden; background: #07070a; border: 1px solid #44444d; border-radius: 7px; }
+.builder-preview-stage canvas { display: block; width: 100%; height: 100%; }
+.preview-actions { display: flex; justify-content: center; gap: 9px; padding-top: 12px; }
+.preview-actions button:disabled { opacity: .4; cursor: not-allowed; }
 .editor-screen { height: 32px; margin: 0 auto 17px; display: grid; place-items: center; color: #d5c58e; background: linear-gradient(90deg, #2a2521, #625642 50%, #2a2521); border: 1px solid #756548; border-radius: 50% 50% 6px 6px / 30% 30% 6px 6px; font-size: 10px; letter-spacing: .12em; }
 .editor-floor { position: relative; width: 100%; max-height: calc(100vh - 230px); min-height: 360px; margin: auto; overflow: hidden; background: repeating-linear-gradient(0deg, transparent 0, transparent calc(10% - 1px), #ffffff09 calc(10% - 1px), #ffffff09 10%), repeating-linear-gradient(90deg, transparent 0, transparent calc(10% - 1px), #ffffff09 calc(10% - 1px), #ffffff09 10%), linear-gradient(180deg, #211f25, #17181d); border: 1px solid #44444d; border-radius: 4px 4px 9px 9px; }
 .editor-floor.placing-mode { cursor: crosshair; border-color: #d0af53; }

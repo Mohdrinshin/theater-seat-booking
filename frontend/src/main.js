@@ -4,7 +4,6 @@ import { getHealth, getSeats, getShows, holdSeats, bookSeats } from './api.js';
 import { createTheater } from './theater/scene.js';
 import { SeatManager } from './theater/seats.js';
 import { renderPanel } from './ui/panel.js';
-import { createBuilder } from './ui/builder.js';
 
 const theater = createTheater(document.getElementById('canvas-wrap'));
 const seats = new SeatManager(theater.scene);
@@ -86,7 +85,8 @@ btnSeat.onclick = () => {
 };
 btnOrbit.classList.add('active');
 
-btnBuilder.onclick = () => {
+btnBuilder.onclick = async () => {
+  const { createBuilder } = await import('./ui/builder.js');
   document.getElementById('app').hidden = true;
   builderRoot.hidden = false;
   builder = createBuilder(builderRoot, () => {
