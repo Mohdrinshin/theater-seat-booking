@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from backend.app.db import Base
-from backend.app.models import Hall, HallSeat, HallSection, SeatDesign, Show, ShowSeat, User
+from backend.app.models import Hall, HallSeat, HallSection, PaymentAttempt, SeatDesign, Show, ShowSeat, User
 from backend.app.routers.halls import owned_hall, replace_layout
-from backend.app.routers.shows import book
-from backend.app.schemas import BookRequest, HallSeatIn, LayoutIn, SectionIn
+from backend.app.routers.payments import _settle_captured
+from backend.app.schemas import HallSeatIn, LayoutIn, SectionIn
 from backend.app.seed import seed
 
 
@@ -83,8 +83,8 @@ def test_layout_rejects_overlapping_footprints(db):
 
 
 @pytest.mark.skipif(not os.getenv("TEST_DATABASE_URL"), reason="Set TEST_DATABASE_URL to a disposable PostgreSQL database")
-def test_two_concurrent_bookings_cannot_take_same_seat():
-    """Integration check for PostgreSQL SELECT FOR UPDATE behavior."""
+def test_two_concurrent_payment_settlements_cannot_take_same_seat():
+    """Integration check that only the active hold can settle a seat."""
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     engine = create_engine(os.environ["TEST_DATABASE_URL"], pool_size=4)
@@ -103,24 +103,35 @@ def test_two_concurrent_bookings_cannot_take_same_seat():
         db.add(show)
         db.flush()
         show_seat = ShowSeat(show_id=show.id, hall_seat_id=seat.id, price=10, status="held",
-                             held_by="same-token", held_until=datetime.utcnow() + timedelta(minutes=5))
+                             held_by="active-token", held_until=datetime.utcnow() + timedelta(minutes=5))
         db.add(show_seat)
         db.commit()
         show_id, show_seat_id = show.id, show_seat.id
+        attempts = [
+            PaymentAttempt(show_id=show_id, seat_ids=[show_seat_id], hold_token="active-token",
+                           amount_paise=1180, currency="INR", status="pending"),
+            PaymentAttempt(show_id=show_id, seat_ids=[show_seat_id], hold_token="stale-token",
+                           amount_paise=1180, currency="INR", status="pending"),
+        ]
+        db.add_all(attempts)
+        db.commit()
+        attempt_ids = [attempt.id for attempt in attempts]
 
-    def attempt():
+    def settle(attempt_id):
         with factory() as session:
-            try:
-                return book(show_id, BookRequest(seat_ids=[show_seat_id], hold_token="same-token"), session).booked
-            except HTTPException as error:
-                return error.status_code
+            attempt = session.get(PaymentAttempt, attempt_id)
+            result = _settle_captured(session, attempt, f"pay-{attempt_id}")
+            session.commit()
+            return result
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        results = list(pool.map(lambda _: attempt(), range(2)))
-    assert sum(isinstance(result, list) for result in results) == 1
-    assert 409 in results
+        results = list(pool.map(settle, attempt_ids))
+    assert sum(results) == 1
+    with factory() as db:
+        assert db.get(ShowSeat, show_seat_id).status == "booked"
     with factory.begin() as db:
         db.query(ShowSeat).filter(ShowSeat.id == show_seat_id).delete()
+        db.query(PaymentAttempt).filter(PaymentAttempt.id.in_(attempt_ids)).delete(synchronize_session=False)
         db.query(Show).filter(Show.id == show_id).delete()
         db.query(HallSeat).filter(HallSeat.label == "RACE1").delete()
         hall_id = db.query(Hall).filter(Hall.name == "Test Hall", Hall.owner_id == owner.id).scalar_subquery()

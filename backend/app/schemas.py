@@ -141,3 +141,34 @@ class HoldResponse(BaseModel):
     held: list[int]
     hold_token: str
     held_until: datetime
+
+
+class CheckoutCreate(BaseModel):
+    seat_ids: list[int] = Field(min_length=1, max_length=40)
+
+
+class CheckoutOrderOut(BaseModel):
+    attempt_id: int
+    key_id: str
+    order_id: str
+    amount: int
+    currency: str
+    description: str
+    movie: str
+    cinema: str
+    seats: list[str]
+
+
+class PaymentVerify(BaseModel):
+    attempt_id: int
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
+class PaymentStatusOut(BaseModel):
+    attempt_id: int
+    status: str
+    booked: list[int] = Field(default_factory=list)
+    amount_paise: int
+    razorpay_payment_id: str | None = None

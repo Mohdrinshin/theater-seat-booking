@@ -31,6 +31,21 @@ generate rows or click the plan to place seats, set sections/prices and screen/r
 dimensions, then save or publish. Published halls with future shows accept renames
 and price-only layout updates.
 
+## Razorpay checkout
+Copy `backend/.env.example` to `backend/.env` and set `RAZORPAY_KEY_ID`,
+`RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` from your Razorpay Dashboard.
+The secret stays on the backend; only the public key ID is sent to Standard Checkout.
+The backend calculates the GST-inclusive amount, creates the Razorpay order, holds
+seats, verifies the Checkout HMAC signature, confirms captured payments, and books
+the seats. Expired holds on payments captured too late trigger a refund attempt.
+
+Configure a Razorpay webhook to send `payment.captured` events to
+`https://<your-api-host>/api/payments/webhook`, using the same webhook secret in
+`RAZORPAY_WEBHOOK_SECRET`. For local development, use Razorpay's test keys and a
+public webhook tunnel if you want to exercise webhook delivery. Enable payment
+auto-capture in the Razorpay Dashboard; the backend also attempts to capture an
+authorized payment during Checkout signature verification.
+
 Backend routes include `/api/auth`, `/api/seat-designs`, `/api/halls`, and
 `/api/shows`. Owner routes require a bearer token returned by register/login.
 `GET /api/health` checks database connectivity. Run backend checks with

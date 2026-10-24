@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import './style.css';
-import { getHealth, getSeats, getShows, holdSeats, bookSeats } from './api.js';
+import { getHealth, getSeats, getShows, createCheckout, verifyPayment, getPaymentStatus, cancelCheckout } from './api.js';
 import { createTheater } from './theater/scene.js';
 import { SeatManager } from './theater/seats.js';
 import { renderPanel } from './ui/panel.js';
@@ -17,6 +17,7 @@ let builder = null;
 let show = null;
 let busy = false;
 let loadError = '';
+let paymentMessage = '';
 
 async function load() {
   loadError = '';
@@ -37,25 +38,113 @@ async function load() {
 }
 
 function refreshUI() {
-  renderPanel(panel, { show, seats: seats.selectedSeats(), busy, error: loadError, onBook: book, onRetry: load });
+  renderPanel(panel, { show, seats: seats.selectedSeats(), busy, error: loadError,
+    paymentMessage, onBook: book, onRetry: load });
   btnSeat.disabled = seats.selected.size === 0;
+}
+
+function loadRazorpay() {
+  if (window.Razorpay) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-razorpay-checkout]');
+    if (existing) {
+      existing.addEventListener('load', resolve, { once: true });
+      existing.addEventListener('error', reject, { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.dataset.razorpayCheckout = 'true';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Could not load Razorpay Checkout. Check your connection and retry.'));
+    document.head.append(script);
+  });
+}
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function confirmPayment(order, response) {
+  try {
+    let result = await verifyPayment({
+      attempt_id: order.attempt_id,
+      razorpay_order_id: response.razorpay_order_id,
+      razorpay_payment_id: response.razorpay_payment_id,
+      razorpay_signature: response.razorpay_signature,
+    });
+    for (let retry = 0; result.status === 'pending' && retry < 8; retry += 1) {
+      await delay(1000);
+      result = await getPaymentStatus(order.attempt_id);
+    }
+    if (result.status === 'paid') {
+      paymentMessage = 'Payment captured. Your seats are confirmed.';
+      await load();
+      alert('Payment successful — your seats are booked.');
+    } else if (result.status === 'refunded') {
+      paymentMessage = 'The seats could not be confirmed. Razorpay refund has been initiated.';
+      await load();
+      alert('Payment was captured after the seat hold expired. A refund has been initiated.');
+    } else if (result.status === 'refund_required') {
+      paymentMessage = 'Payment captured. The cinema is processing a refund because the seat hold expired.';
+      await load();
+      alert('Payment was captured after the seat hold expired. Please contact the cinema for your refund.');
+    } else {
+      paymentMessage = 'Payment confirmation is still processing. Your seats remain held briefly.';
+      await load();
+      alert('Payment is still processing. Your booking will update when Razorpay confirms it.');
+    }
+  } catch (error) {
+    paymentMessage = 'Payment confirmation is still processing. Check again in a moment.';
+    await load();
+    alert(error.message || 'Payment confirmation is still processing. Please check again shortly.');
+  } finally {
+    busy = false;
+    refreshUI();
+  }
 }
 
 async function book() {
   if (!show) return;
-  busy = true; refreshUI();
+  busy = true; paymentMessage = ''; refreshUI();
+  let order = null;
+  let checkoutReturned = false;
   try {
+    await loadRazorpay();
     const selected = seats.selectedSeats();
     const ids = selected.map((seat) => seat.id);
-    const hold = Number.isFinite(selected[0]?.x) ? await holdSeats(show.id, ids) : null;
-    await bookSeats(show.id, ids, hold?.hold_token);
-    theater.orbitView();
-    await load();
-    alert('Booked!');
+    order = await createCheckout(show.id, ids);
+    const checkout = new window.Razorpay({
+      key: order.key_id,
+      amount: order.amount,
+      currency: order.currency,
+      name: 'PVR Cinema',
+      description: `${order.movie} · ${order.seats.join(', ')}`,
+      order_id: order.order_id,
+      theme: { color: '#c6a14a' },
+      handler: (response) => {
+        checkoutReturned = true;
+        confirmPayment(order, response);
+      },
+      modal: {
+        ondismiss: async () => {
+          if (!checkoutReturned && order) {
+            try { await cancelCheckout(order.attempt_id); } catch { /* the server hold still expires automatically */ }
+            busy = false;
+            refreshUI();
+          }
+        },
+      },
+    });
+    checkout.on('payment.failed', (event) => {
+      paymentMessage = event.error?.description || 'Payment failed. You can retry in the Razorpay window.';
+      refreshUI();
+    });
+    checkout.open();
   } catch (e) {
-    alert(e.message);
-    await load();
-  } finally {
+    if (order) {
+      try { await cancelCheckout(order.attempt_id); } catch { /* the server hold still expires automatically */ }
+    }
+    paymentMessage = e.message || 'Could not start payment.';
+    alert(paymentMessage);
     busy = false; refreshUI();
   }
 }

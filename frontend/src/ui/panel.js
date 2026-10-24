@@ -1,7 +1,10 @@
 const GST = 0.18;
 const fmt = (n) => '₹' + n.toFixed(2);
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[char]));
 
-export function renderPanel(el, { show, seats, onBook, busy, error, onRetry }) {
+export function renderPanel(el, { show, seats, onBook, busy, error, paymentMessage, onRetry }) {
   if (error) {
     el.innerHTML = `<div class="error-state"><h2>Theater unavailable</h2><p>${error}</p><button id="retry">Retry connection</button></div>`;
     el.querySelector('#retry').onclick = onRetry;
@@ -19,7 +22,8 @@ export function renderPanel(el, { show, seats, onBook, busy, error, onRetry }) {
     ${seats.length === 0 ? '<p class="sub">Click available seats in the 3D hall.</p>' : ''}
     ${seats.map((s) => `<div class="row"><span>${s.label || `${s.row}${s.number}`} · ${s.section}</span><span>${fmt(s.price)}</span></div>`).join('')}
     <div class="total"><span>Total (+18% GST)</span><span>${fmt(total)}</span></div>
-    <button id="book" ${seats.length === 0 || busy ? 'disabled' : ''}>${busy ? 'Booking…' : 'Book seats'}</button>
+    ${paymentMessage ? `<p class="payment-message" role="status">${escapeHtml(paymentMessage)}</p>` : ''}
+    <button id="book" ${seats.length === 0 || busy ? 'disabled' : ''}>${busy ? 'Opening secure checkout…' : `Pay ${fmt(total)}`}</button>
   `;
   el.querySelector('#book').onclick = onBook;
 }

@@ -100,3 +100,18 @@ class ShowSeat(Base):
     status: Mapped[str] = mapped_column(String(12), default="available")
     held_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     held_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class PaymentAttempt(Base):
+    __tablename__ = "payment_attempts"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    show_id: Mapped[int] = mapped_column(ForeignKey("shows.id", ondelete="CASCADE"), index=True)
+    razorpay_order_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    razorpay_payment_id: Mapped[str | None] = mapped_column(String(64), unique=True, nullable=True)
+    seat_ids: Mapped[list[int]] = mapped_column(JSON)
+    hold_token: Mapped[str] = mapped_column(String(64))
+    amount_paise: Mapped[int] = mapped_column()
+    currency: Mapped[str] = mapped_column(String(3), default="INR")
+    status: Mapped[str] = mapped_column(String(24), default="creating", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

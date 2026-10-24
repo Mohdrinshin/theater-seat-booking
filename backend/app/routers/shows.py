@@ -89,19 +89,7 @@ def hold(show_id: int, body: BookRequest, db: Session = Depends(get_db)):
 def book(show_id: int, body: BookRequest, db: Session = Depends(get_db)):
     show = db.get(Show, show_id)
     if show and show.hall_id:
-        now = datetime.utcnow()
-        ids = list(set(body.seat_ids))
-        db.execute(update(ShowSeat).where(ShowSeat.show_id == show_id, ShowSeat.status == "held", ShowSeat.held_until <= now)
-                   .values(status="available", held_until=None, held_by=None))
-        rows = db.scalars(select(ShowSeat).where(ShowSeat.show_id == show_id, ShowSeat.id.in_(ids)).with_for_update()).all()
-        if not ids or len(rows) != len(ids):
-            raise HTTPException(400, "Invalid seats")
-        if any(row.status != "held" or row.held_by != body.hold_token or not row.held_until or row.held_until <= now for row in rows):
-            raise HTTPException(409, "Hold expired or seats were held by another customer")
-        for row in rows:
-            row.status, row.held_until, row.held_by = "booked", None, None
-        db.commit()
-        return BookResponse(booked=[row.id for row in rows], total=float(sum(row.price for row in rows)))
+        raise HTTPException(409, "Hall bookings must be completed through Razorpay Checkout")
     # Row locks stop two people booking the same seat at once.
     seats = db.scalars(
         select(Seat)

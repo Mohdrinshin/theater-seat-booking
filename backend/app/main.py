@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from .db import SessionLocal, engine
-from .routers import shows, halls, auth, designs
+from .routers import shows, halls, auth, designs, payments
 from .seed import seed
 
 
@@ -34,6 +34,7 @@ app.include_router(shows.router)
 app.include_router(auth.router)
 app.include_router(halls.router)
 app.include_router(designs.router)
+app.include_router(payments.router)
 
 
 @app.get("/api/health")

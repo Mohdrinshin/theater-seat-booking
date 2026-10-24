@@ -17,6 +17,19 @@ export const bookSeats = (showId, seatIds, holdToken) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ seat_ids: seatIds, ...(holdToken ? { hold_token: holdToken } : {}) }),
   }).then(json);
+export const createCheckout = (showId, seatIds) =>
+  fetch(`/api/shows/${showId}/checkout`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ seat_ids: seatIds }),
+  }).then(json);
+export const verifyPayment = (payment) =>
+  fetch('/api/payments/verify', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payment),
+  }).then(json);
+export const getPaymentStatus = (attemptId) => fetch(`/api/payments/${attemptId}`).then(json);
+export const cancelCheckout = (attemptId) =>
+  fetch(`/api/payments/${attemptId}/cancel`, { method: 'POST' }).then(json);
 
 const ownerJson = (path, token, options = {}) => fetch(path, {
   ...options,

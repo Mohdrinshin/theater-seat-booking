@@ -8,6 +8,7 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color
 #panel .sub { color: #999; font-size: 13px; margin-bottom: 16px; }
 #panel .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #222; font-size: 14px; }
 #panel .total { margin-top: 14px; font-weight: 600; display: flex; justify-content: space-between; }
+#panel .payment-message { color: #d8c17d; font-size: 12px; line-height: 1.45; }
 #panel button { width: 100%; margin-top: 16px; padding: 12px; border: 0; border-radius: 8px; background: #f5c400; font-weight: 700; cursor: pointer; }
 #panel button:disabled { background: #333; color: #777; cursor: not-allowed; }
 #panel .error-state { padding: 12px; border: 1px solid #58353a; border-radius: 10px; background: #211719; }
