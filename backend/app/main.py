@@ -1,16 +1,23 @@
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
+from alembic import command
+from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
-from .db import Base, SessionLocal, engine
-from .routers import shows
+from .db import SessionLocal, engine
+from .routers import shows, halls, auth, designs
 from .seed import seed
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    Base.metadata.create_all(engine)
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    config.set_main_option("script_location", str(Path(__file__).resolve().parents[1] / "migrations"))
+    database_url = os.getenv("DATABASE_URL", "postgresql+psycopg2://theater:theater@localhost:5432/theater")
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
+    command.upgrade(config, "head")
     with SessionLocal() as db:
         seed(db)
     yield
@@ -24,6 +31,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(shows.router)
+app.include_router(auth.router)
+app.include_router(halls.router)
+app.include_router(designs.router)
 
 
 @app.get("/api/health")
