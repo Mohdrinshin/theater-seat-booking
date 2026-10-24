@@ -1,0 +1,19 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color: #eee; overflow: hidden; }
+#app { display: grid; grid-template-columns: 1fr 340px; height: 100vh; position: relative; }
+#canvas-wrap { position: relative; min-width: 0; }
+#canvas-wrap canvas { display: block; }
+#panel { padding: 20px; background: #14141a; border-left: 1px solid #26262e; overflow: auto; }
+#panel h2 { margin: 0 0 4px; font-size: 18px; }
+#panel .sub { color: #999; font-size: 13px; margin-bottom: 16px; }
+#panel .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #222; font-size: 14px; }
+#panel .total { margin-top: 14px; font-weight: 600; display: flex; justify-content: space-between; }
+#panel button { width: 100%; margin-top: 16px; padding: 12px; border: 0; border-radius: 8px; background: #f5c400; font-weight: 700; cursor: pointer; }
+#panel button:disabled { background: #333; color: #777; cursor: not-allowed; }
+#toolbar { position: absolute; left: 16px; top: 16px; display: flex; gap: 8px; }
+#toolbar button { padding: 8px 12px; border-radius: 8px; border: 1px solid #333; background: #1b1b22; color: #eee; cursor: pointer; }
+#toolbar button.active { background: #f5c400; color: #000; }
+#toolbar button:disabled { opacity: .4; cursor: not-allowed; }
+#legend { position: absolute; left: 16px; bottom: 16px; font-size: 13px; color: #bbb; }
+#legend i { display: inline-block; width: 12px; height: 12px; margin: 0 6px 0 12px; border-radius: 3px; vertical-align: -1px; }
+.av { background: #c0262d; } .se { background: #f5c400; } .oc { background: #444; }
