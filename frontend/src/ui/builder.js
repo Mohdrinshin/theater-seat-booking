@@ -13,20 +13,26 @@ export function createBuilder(root, onExit) {
     token: localStorage.getItem('theater-owner-token') || '',
     register: true, designs: [], halls: [], hall: null, sections: [], seats: [],
     designId: null, sectionIndex: 0, message: '', error: '', placing: false,
-    preview3d: false, preview: null, colorOverrides: {},
+    preview3d: false, preview: null, colorOverrides: {}, editSeatKey: null,
     form: { name: 'New auditorium', room_width: 24, room_depth: 30, room_height: 12,
       screen: { width: 16, height: 7, curve: 0, x: 0, y: 4.2, z: 0, aspect: 16 / 7 } },
   };
 
   function takeHall(hall) {
     state.hall = hall;
+    state.editSeatKey = null;
+    state.sectionIndex = 0;
+    state.colorOverrides = {};
     state.sections = hall?.sections?.length ? hall.sections.map((s) => ({ ...s })) : [
       { name: 'Classic', base_price: 745.76, color: '#b71927' },
       { name: 'Prime', base_price: 889.82, color: '#8c1520' },
     ];
     state.seats = (hall?.seats || []).map((s) => ({ ...s, sectionIndex: state.sections.findIndex((section) => section.id === s.section_id) }));
-    if (hall) state.form = { name: hall.name, room_width: hall.room_width, room_depth: hall.room_depth,
-      room_height: hall.room_height, screen: { ...hall.screen } };
+    state.form = hall
+      ? { name: hall.name, room_width: hall.room_width, room_depth: hall.room_depth,
+          room_height: hall.room_height, screen: { ...hall.screen } }
+      : { name: 'New auditorium', room_width: 24, room_depth: 30, room_height: 12,
+          screen: { width: 16, height: 7, curve: 0, x: 0, y: 4.2, z: 0, aspect: 16 / 7 } };
   }
 
   async function loadHalls() {
@@ -43,7 +49,8 @@ export function createBuilder(root, onExit) {
     const top = ((seat.z / state.form.room_depth) * 100).toFixed(3);
     const w = Math.max(1.6, (width / state.form.room_width) * 100).toFixed(3);
     const h = Math.max(1.4, (depth / state.form.room_depth) * 100).toFixed(3);
-    return `<button class="builder-seat" data-seat="${seat.id ?? seat.label}" title="${escapeHtml(seat.label)} · ${escapeHtml(design?.name || '')}"
+    const key = seat.id ?? seat.label;
+    return `<button class="builder-seat ${String(state.editSeatKey) === String(key) ? 'editing' : ''}" data-seat="${escapeHtml(key)}" title="${escapeHtml(seat.label)} · ${escapeHtml(design?.name || '')}"
       style="left:${left}%;top:${top}%;width:${w}%;height:${h}%;background:${escapeHtml(seat.colors?.cushion || design?.default_colors?.cushion || '#a21a28')};transform:translate(-50%,-50%) rotate(${seat.rotation_y || 0}deg)">${escapeHtml(seat.seat_number)}</button>`;
   }
 
@@ -66,6 +73,7 @@ export function createBuilder(root, onExit) {
     }
     const form = state.form;
     const selectedDesign = state.designs.find((d) => d.id === Number(state.designId));
+    const editingSeat = state.seats.find((seat) => String(seat.id ?? seat.label) === String(state.editSeatKey));
     root.innerHTML = `<header class="builder-header"><div><span class="studio-kicker">PVR · HALL BUILDER</span><strong>Auditorium studio</strong></div>
       <div class="builder-header-actions"><span class="save-message">${escapeHtml(state.message)}</span><button data-action="logout" class="text-button">Sign out</button><button data-action="exit" class="outline-button">Exit studio</button></div></header>
       <div class="builder-layout"><aside class="builder-tools">
@@ -81,7 +89,12 @@ export function createBuilder(root, onExit) {
         <div class="field-pair"><label class="field-label">Row label<input id="row-label" maxlength="8" value="${escapeHtml(nextRow())}"></label><label class="field-label">Section<select id="section-select">${state.sections.map((s, i) => `<option value="${i}" ${state.sectionIndex === i ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}</select></label></div>
         <label class="field-label">Seats in generated row<input id="row-count" type="number" min="1" max="40" value="12"></label>
         <button class="outline-button full-width" data-action="add-row">Generate row</button>
-        <button class="outline-button full-width ${state.placing ? 'placing' : ''}" data-action="place">${state.placing ? 'Click room to place · Done' : 'Place individual seat'}</button>
+        <button class="outline-button full-width ${state.placing ? 'placing' : ''}" data-action="place">${state.placing ? 'Click or drag room to place · Done' : 'Place individual seat'}</button>
+        ${editingSeat ? `<div class="section-card seat-edit-card"><div class="section-head"><b>Edit ${escapeHtml(editingSeat.label)}</b><button data-action="close-seat-edit" aria-label="Close seat editor">×</button></div>
+          <div class="field-pair"><label class="field-label">Row<input data-edit-row value="${escapeHtml(editingSeat.row_label)}"></label><label class="field-label">First seat #<input type="number" min="1" data-edit-number value="${editingSeat.seat_number}"></label></div>
+          <label class="field-label">Seat label<input data-edit-label value="${escapeHtml(editingSeat.label)}"></label>
+          <label class="field-label">Section<select data-edit-section>${state.sections.map((section, i) => `<option value="${i}" ${(editingSeat.sectionIndex ?? state.sections.findIndex((s) => s.id === editingSeat.section_id)) === i ? 'selected' : ''}>${escapeHtml(section.name)}</option>`).join('')}</select></label>
+          <button class="remove-seat-button" data-action="remove-seat">Remove seat</button></div>` : ''}
         <div class="section-card"><div class="section-head"><b>Sections and base prices</b><button data-action="add-section" aria-label="Add section">+</button></div>${state.sections.map((s, i) => `<div class="section-row"><input data-section-name="${i}" value="${escapeHtml(s.name)}" aria-label="Section name"><input data-section-price="${i}" type="number" min="0" step="0.01" value="${s.base_price}" aria-label="Base price"><input data-section-color="${i}" type="color" value="${escapeHtml(s.color)}" aria-label="Section color"></div>`).join('')}</div>
         <div class="builder-actions"><button class="gold-button" data-action="save">Save draft</button><button class="publish-button" data-action="publish" ${state.hall?.status === 'published' ? 'disabled' : ''}>${state.hall?.status === 'published' ? 'Published' : 'Publish hall'}</button></div>
         ${state.error ? `<p class="builder-error">${escapeHtml(state.error)}</p>` : ''}
@@ -91,7 +104,7 @@ export function createBuilder(root, onExit) {
           : `<div class="editor-screen" style="width:${Math.min(80, (form.screen.width / form.room_width) * 100)}%">SCREEN · ${form.screen.width} × ${form.screen.height} m</div>
           <div class="editor-floor ${state.placing ? 'placing-mode' : ''}" id="editor-floor" style="aspect-ratio:${form.room_width}/${form.room_depth}">${state.seats.map(buttonSeatMarkup).join('')}
           ${state.seats.length === 0 ? '<div class="floor-hint">Generate rows or click to place seats</div>' : ''}</div>`}</div>
-        <div class="editor-footer"><span>${state.preview3d ? 'Drag to orbit · scroll to zoom' : 'Click a seat to remove it'}</span><span>${state.placing && !state.preview3d ? 'Click an empty spot to place a seat' : 'Screen at the top · room coordinates in metres'}</span></div>
+        <div class="editor-footer"><span>${state.preview3d ? 'Drag to orbit · scroll to zoom' : 'Select a seat to edit its row, number, label, or section'}</span><span>${state.placing && !state.preview3d ? 'Click or drag across the room to place seats' : 'Screen at the top · room coordinates in metres'}</span></div>
       </main></div>`;
     bind();
     if (state.preview3d) {
@@ -160,6 +173,12 @@ export function createBuilder(root, onExit) {
       if (action === 'logout') { localStorage.removeItem('theater-owner-token'); state.token = ''; draw(); }
       if (action === 'add-row') addRow();
       if (action === 'place') { state.placing = !state.placing; draw(); }
+      if (action === 'close-seat-edit') { state.editSeatKey = null; draw(); }
+      if (action === 'remove-seat') {
+        state.seats = state.seats.filter((seat) => String(seat.id ?? seat.label) !== String(state.editSeatKey));
+        state.editSeatKey = null;
+        draw();
+      }
       if (action === 'toggle-preview') { state.preview3d = !state.preview3d; draw(); }
       if (action === 'preview-orbit') state.preview?.theater.orbitView();
       if (action === 'preview-seat' && state.seats.length) state.preview?.theater.seatView(state.seats[0]);
@@ -191,27 +210,68 @@ export function createBuilder(root, onExit) {
     root.querySelectorAll('[data-section-color]').forEach((input) => input.addEventListener('change', () => { state.sections[Number(input.dataset.sectionColor)].color = input.value; }));
     root.querySelectorAll('.builder-seat').forEach((seatButton) => seatButton.addEventListener('click', (event) => {
       event.stopPropagation();
-      const index = state.seats.findIndex((s) => String(s.id ?? s.label) === seatButton.dataset.seat);
-      if (index >= 0) state.seats.splice(index, 1);
+      state.editSeatKey = seatButton.dataset.seat;
       draw();
     }));
-    root.querySelector('#editor-floor')?.addEventListener('click', (event) => {
-      if (!state.placing) return;
-      const bounds = event.currentTarget.getBoundingClientRect();
+    const editSeat = () => state.seats.find((seat) => String(seat.id ?? seat.label) === String(state.editSeatKey));
+    root.querySelector('[data-edit-row]')?.addEventListener('change', (event) => {
+      const seat = editSeat(); if (!seat) return;
+      seat.row_label = event.target.value.trim().toUpperCase();
+      draw();
+    });
+    root.querySelector('[data-edit-number]')?.addEventListener('change', (event) => {
+      const seat = editSeat(); if (!seat) return;
+      seat.seat_number = Math.max(1, Number(event.target.value) || 1);
+      draw();
+    });
+    root.querySelector('[data-edit-label]')?.addEventListener('change', (event) => {
+      const seat = editSeat(); if (!seat) return;
+      seat.label = event.target.value.trim() || `${seat.row_label}${seat.seat_number}`;
+      state.editSeatKey = seat.id ?? seat.label;
+      draw();
+    });
+    root.querySelector('[data-edit-section]')?.addEventListener('change', (event) => {
+      const seat = editSeat(); if (!seat) return;
+      seat.sectionIndex = Number(event.target.value);
+      draw();
+    });
+    let placementPath = null;
+    const floor = root.querySelector('#editor-floor');
+    const placeAt = (event) => {
+      const bounds = floor.getBoundingClientRect();
       const x = ((event.clientX - bounds.left) / bounds.width - 0.5) * state.form.room_width;
       const z = ((event.clientY - bounds.top) / bounds.height) * state.form.room_depth;
       const row = root.querySelector('#row-label').value.trim().toUpperCase() || 'A';
       const design = state.designs.find((d) => d.id === Number(state.designId));
-      if (!design) return;
+      if (!design) return false;
+      const minStep = Math.max(0.35, design.width * 0.82);
+      if (placementPath && Math.hypot(x - placementPath.x, z - placementPath.z) < minStep) return false;
       const number = Math.max(0, ...state.seats.filter((s) => s.row_label === row).map((s) => {
         const item = state.designs.find((d) => d.id === s.design_id);
         return s.seat_number + (item?.capacity || 1) - 1;
       })) + 1;
       const label = design.capacity > 1 ? `${row}${number}-${number + design.capacity - 1}` : `${row}${number}`;
       state.seats.push({ row_label: row, seat_number: number, label, x, y: 0, z,
-        rotation_y: 0, design_id: design.id, sectionIndex: state.sectionIndex, colors: { ...design.default_colors, ...(state.colorOverrides || {}) }, is_active: true });
+        rotation_y: 0, design_id: design.id, sectionIndex: state.sectionIndex,
+        colors: { ...design.default_colors, ...(state.colorOverrides || {}) }, is_active: true });
+      placementPath = { x, z };
+      return true;
+    };
+    floor?.addEventListener('pointerdown', (event) => {
+      if (!state.placing || event.target.closest('.builder-seat')) return;
+      placementPath = null;
+      placeAt(event);
+      floor.setPointerCapture(event.pointerId);
+    });
+    floor?.addEventListener('pointermove', (event) => {
+      if (state.placing && event.buttons === 1 && placementPath) placeAt(event);
+    });
+    floor?.addEventListener('pointerup', () => {
+      if (!placementPath) return;
+      placementPath = null;
       draw();
     });
+    floor?.addEventListener('pointercancel', () => { placementPath = null; draw(); });
   }
 
   function addRow() {

@@ -51,6 +51,8 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color
 .full-width { width: 100%; margin: 0 0 8px; }
 .text-button { padding: 7px 0; background: transparent; border-color: transparent; color: #b8a56f; }
 .section-card { margin: 18px 0; padding: 12px; border: 1px solid #303139; border-radius: 9px; background: #191a20; }
+.seat-edit-card { border-color: #67572e; }
+.remove-seat-button { width: 100%; padding: 8px; color: #e1a9ab; border: 1px solid #563438; border-radius: 6px; background: #26191b; cursor: pointer; }
 .section-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #ccc; margin-bottom: 8px; }
 .section-head button { width: 25px; height: 25px; border-radius: 6px; border: 1px solid #494a52; color: #eee; background: #24252b; cursor: pointer; }
 .section-row { display: grid; grid-template-columns: 1fr 92px 40px; align-items: center; gap: 7px; margin-top: 7px; }
@@ -79,6 +81,7 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color
 .editor-floor.placing-mode { cursor: crosshair; border-color: #d0af53; }
 .builder-seat { position: absolute; min-width: 16px; min-height: 15px; padding: 0; color: #fff; border: 1px solid #e6c87f88; border-radius: 40% 40% 5px 5px; font-size: clamp(7px, .7vw, 10px); line-height: 1; cursor: pointer; box-shadow: 0 2px 7px #0009; }
 .builder-seat:hover { z-index: 2; filter: brightness(1.35); outline: 1px solid #fff; }
+.builder-seat.editing { z-index: 2; outline: 2px solid #f3ca65; filter: brightness(1.2); }
 .floor-hint { position: absolute; inset: 0; display: grid; place-items: center; color: #74757d; font-size: 14px; pointer-events: none; }
 .editor-footer { max-width: 1100px; margin: 11px auto; display: flex; justify-content: space-between; color: #777983; font-size: 11px; }
 .builder-auth { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse at 50% 30%, #25222a, #0b0c10 65%); }
