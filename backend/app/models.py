@@ -42,9 +42,22 @@ class SeatDesign(Base):
     name: Mapped[str] = mapped_column(String(100))
     width: Mapped[float] = mapped_column(Float)
     depth: Mapped[float] = mapped_column(Float)
+    depth_closed: Mapped[float] = mapped_column(Float, default=0.6)
+    depth_open: Mapped[float] = mapped_column(Float, default=0.6)
     capacity: Mapped[int] = mapped_column(default=1)
     price_multiplier: Mapped[float] = mapped_column(Float, default=1)
+    tier: Mapped[str] = mapped_column(String(32), default="Standard")
+    upholstery: Mapped[str] = mapped_column(String(16), default="fabric")
     default_colors: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class RoomTheme(Base):
+    __tablename__ = "room_themes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    default_seat: Mapped[str] = mapped_column(String(32))
+    config: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class Hall(Base):
@@ -57,6 +70,8 @@ class Hall(Base):
     room_depth: Mapped[float] = mapped_column(Float, default=30)
     room_height: Mapped[float] = mapped_column(Float, default=12)
     screen: Mapped[dict] = mapped_column(JSON, default=dict)
+    room_theme: Mapped[str] = mapped_column(String(32), default="multiplex")
+    theme_options: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     sections: Mapped[list["HallSection"]] = relationship(cascade="all, delete-orphan")
@@ -87,6 +102,7 @@ class HallSeat(Base):
     z: Mapped[float] = mapped_column(Float)
     rotation_y: Mapped[float] = mapped_column(Float, default=0)
     colors: Mapped[dict] = mapped_column(JSON, default=dict)
+    design_options: Mapped[dict] = mapped_column(JSON, default=dict)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 

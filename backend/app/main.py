@@ -34,6 +34,7 @@ app.include_router(shows.router)
 app.include_router(auth.router)
 app.include_router(halls.router)
 app.include_router(designs.router)
+app.include_router(designs.room_router)
 app.include_router(payments.router)
 
 

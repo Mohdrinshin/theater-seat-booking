@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from sqlalchemy.orm import Session
 from .auth import hash_password
-from .models import Hall, HallSection, HallSeat, Seat, SeatDesign, Show, ShowSeat, User
+from .models import Hall, HallSection, HallSeat, RoomTheme, Seat, SeatDesign, Show, ShowSeat, User
 
 CLASSIC_ROWS, PRIME_ROWS = list("ABCDEFG"), list("HJ")   # PVR skips "I"
 CLASSIC_PRICE, PRIME_PRICE = 745.76, 889.82
@@ -25,17 +25,37 @@ FREE = {
 
 def seed(db: Session) -> None:
     designs = [
-        ("classic", "Classic chair", 0.55, 0.60, 1, 1.0, {"cushion": "#b71927", "frame": "#28252a", "accent": "#4b4542"}),
-        ("recliner", "Premium recliner", 0.85, 1.10, 1, 1.5, {"cushion": "#8c1520", "frame": "#29262b", "accent": "#b79a6a"}),
-        ("couple", "Couple sofa", 1.40, 0.80, 2, 1.8, {"cushion": "#7e1822", "frame": "#28252a", "accent": "#b79a6a"}),
-        ("lounger", "Luxury lounger", 1.00, 1.80, 1, 2.0, {"cushion": "#4a2032", "frame": "#242228", "accent": "#b79a6a"}),
-        ("accessible", "Wheelchair space", 1.20, 1.40, 1, 1.0, {"cushion": "#385a78", "frame": "#25262a", "accent": "#d5dbe2"}),
+        ("classic", "Classic Cinema Chair", .600, .668, .668, 1, 1.0, "Standard", "fabric", {"uph": "#5c1520", "frame": "#1b1b1d", "metal": "steel"}),
+        ("recliner", "Premium Recliner", .930, 1.079, 1.515, 1, 1.6, "Prime", "leather", {"uph": "#8a4a23", "frame": "#3a3c40", "metal": "chrome"}),
+        ("couple", "Couple Loveseat", 1.380, 1.009, 1.009, 2, 2.4, "Prime", "leather", {"uph": "#4a1418", "frame": "#1b1b1d", "metal": "steel"}),
+        ("vip", "VIP Luxury Recliner", 1.000, 1.285, 1.774, 1, 2.2, "Luxe", "leather", {"uph": "#2d2d30", "frame": "#1b1b1d", "metal": "brass"}),
+        ("modern", "Modern Fabric Seat", .570, .640, .640, 1, 1.1, "Standard+", "fabric", {"uph": "#6f7d6a", "frame": "#3a3c40", "metal": "steel"}),
+        ("pod", "Private Pod Suite", 1.234, .937, .937, 1, 3.0, "Luxe", "leather", {"uph": "#d8cfc0", "frame": "#4a3a2c", "metal": "brass"}),
     ]
-    for key, name, width, depth, capacity, multiplier, colors in designs:
+    for key, name, width, depth_closed, depth_open, capacity, multiplier, tier, upholstery, colors in designs:
         item = db.query(SeatDesign).filter_by(key=key).first()
         if not item:
-            db.add(SeatDesign(key=key, name=name, width=width, depth=depth, capacity=capacity,
-                              price_multiplier=multiplier, default_colors=colors))
+            item = SeatDesign(key=key)
+            db.add(item)
+        item.name, item.width, item.depth = name, width, depth_closed
+        item.depth_closed, item.depth_open = depth_closed, depth_open
+        item.capacity, item.price_multiplier = capacity, multiplier
+        item.tier, item.upholstery, item.default_colors = tier, upholstery, colors
+
+    themes = [
+        ("multiplex", "Classic Multiplex", "classic", {"layout": {"rows": 10, "sec": [4, 10, 4], "aisle": 1.2, "side": 1.1, "pitch": 1.2, "riser": .38, "front": 4.5, "back": 2.2, "minW": 14, "H": 8, "fill": .78, "aspect": 2.39, "stage": .6}, "palette": {"wall": "#1d1e23", "feature": "#2b2e38", "carpet": "#25272f"}, "style": "panels", "lights": ["sconces", "downlights", "step-lights"], "defaultFinish": {"uph": "#5c1520", "frame": "#1b1b1d", "metal": "steel"}}),
+        ("luxury", "Premium Luxury Auditorium", "recliner", {"layout": {"rows": 7, "sec": [3, 7, 3], "aisle": 1.3, "side": 1.2, "pitch": 1.8, "riser": .45, "front": 4.5, "back": 2, "minW": 16, "H": 7.5, "fill": .8, "aspect": 2.39, "stage": .5}, "palette": {"wall": "#3b2618", "feature": "#5b3a24", "carpet": "#3a2a20", "curtain": "#cbb79a"}, "style": "walnut", "lights": ["cove", "coffers", "step-lights"], "defaultFinish": {"uph": "#8a4a23", "frame": "#3a3c40", "metal": "chrome"}}),
+        ("largeformat", "Large-Format Theatre", "classic", {"layout": {"rows": 11, "sec": [4, 12, 4], "aisle": 1.2, "side": 1.2, "pitch": 1.2, "riser": .55, "front": 5, "back": 2, "minW": 18, "H": 12, "fill": .95, "aspect": 1.9, "stage": .3}, "palette": {"wall": "#0e0e10", "feature": "#18181b", "carpet": "#1a1b1f"}, "style": "flutes", "lights": ["acoustic-clouds", "step-lights"], "defaultFinish": {"uph": "#2d2d30", "frame": "#1b1b1d", "metal": "chrome"}}),
+        ("immersive", "Immersive Sound Cinema", "vip", {"layout": {"rows": 8, "sec": [3, 8, 3], "aisle": 1.3, "side": 1.3, "pitch": 2.3, "riser": .45, "front": 5, "back": 2, "minW": 18, "H": 9, "fill": .88, "aspect": 2.39, "stage": .4}, "palette": {"wall": "#141416", "feature": "#1f2024", "carpet": "#16171a"}, "style": "hpanels", "lights": ["speaker-arrays", "floor-led", "step-lights"], "defaultFinish": {"uph": "#2d2d30", "frame": "#1b1b1d", "metal": "brass"}}),
+        ("vip", "VIP Private Screening Room", "pod", {"layout": {"rows": 3, "sec": [4], "aisle": 1.2, "side": 1.3, "pitch": 2, "riser": .4, "front": 3.5, "back": 1.6, "minW": 8.5, "H": 4.5, "fill": .78, "aspect": 2.39, "stage": .3}, "palette": {"wall": "#cfc4b2", "feature": "#5b3a24", "carpet": "#1f3a3c", "curtain": "#6a1420"}, "style": "wainscot", "lights": ["brass-sconces", "tray-cove", "step-lights"], "defaultFinish": {"uph": "#d8cfc0", "frame": "#4a3a2c", "metal": "brass"}}),
+        ("boutique", "Modern Boutique Cinema", "modern", {"layout": {"rows": 8, "sec": [3, 7, 3], "aisle": 1.15, "side": 1.1, "pitch": 1.15, "riser": .35, "front": 4, "back": 1.8, "minW": 12, "H": 6.5, "fill": .8, "aspect": 2.39, "stage": .45}, "palette": {"wall": "#2a2b2e", "feature": "#a77c52", "carpet": "#2c2e30"}, "style": "battens", "lights": ["linear-pendants", "step-lights"], "defaultFinish": {"uph": "#6f7d6a", "frame": "#3a3c40", "metal": "steel", "wood": "#a77c52"}}),
+    ]
+    for key, name, default_seat, config in themes:
+        theme = db.query(RoomTheme).filter_by(key=key).first()
+        if not theme:
+            theme = RoomTheme(key=key)
+            db.add(theme)
+        theme.name, theme.default_seat, theme.config = name, default_seat, config
     if not db.query(Show).count():
         show = Show(movie="Namit Malhotra's Ramayana", cinema="PVR Vegas Dwarka", starts_at=datetime(2026, 11, 5, 17, 45))
         db.add(show)
@@ -80,6 +100,9 @@ def seed(db: Session) -> None:
         db.flush()
         show.hall_id = hall.id
     if hall and show:
+        hall.room_theme = hall.room_theme or "multiplex"
+        hall.theme_options = hall.theme_options or {"accent": True, "accentColor": "#ffb35a", "accentLevel": 0.35,
+                                                    "shadows": True, "haze": False, "dust": False, "quality": "high"}
         show.hall_id = hall.id
         if not db.query(ShowSeat).filter_by(show_id=show.id).count():
             legacy = {(s.row, s.number): s for s in db.query(Seat).filter_by(show_id=show.id).all()}

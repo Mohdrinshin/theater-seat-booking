@@ -6,6 +6,7 @@ const json = async (res) => {
 export const getShows = () => fetch('/api/shows').then(json);
 export const getHealth = () => fetch('/api/health').then(json);
 export const getSeats = (showId) => fetch(`/api/shows/${showId}/seats`).then(json);
+export const getShowHall = (showId) => fetch(`/api/shows/${showId}/hall`).then(json);
 export const holdSeats = (showId, seatIds) =>
   fetch(`/api/shows/${showId}/hold`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -43,6 +44,7 @@ export const ownerLogin = (email, password) => fetch('/api/auth/login', {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }),
 }).then(json);
 export const getDesigns = () => fetch('/api/seat-designs').then(json);
+export const getRoomThemes = () => fetch('/api/room-themes').then(json);
 export const getHalls = (token) => ownerJson('/api/halls', token);
 export const createHall = (token, hall) => ownerJson('/api/halls', token, { method: 'POST', body: JSON.stringify(hall) });
 export const saveHall = (token, id, hall) => ownerJson(`/api/halls/${id}`, token, { method: 'PUT', body: JSON.stringify(hall) });

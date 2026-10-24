@@ -34,11 +34,25 @@ def get_seats(show_id: int, db: Session = Depends(get_db)):
         return [SeatOut(id=ss.id, row=hs.row_label, number=hs.seat_number, section=section.name,
                         price=float(ss.price), status="occupied" if ss.status in {"booked", "held"} and (ss.status == "booked" or not ss.held_until or ss.held_until > datetime.utcnow()) else "available",
                         x=hs.x, y=hs.y, z=hs.z, rotation_y=hs.rotation_y, design=design.key,
-                        colors=hs.colors, label=hs.label, capacity=design.capacity)
+                        colors=hs.colors, design_options=hs.design_options, label=hs.label, capacity=design.capacity)
                 for ss, hs, section, design in rows]
     return db.scalars(
         select(Seat).where(Seat.show_id == show_id).order_by(Seat.row, Seat.number)
     ).all()
+
+
+@router.get("/{show_id}/hall")
+def get_show_hall(show_id: int, db: Session = Depends(get_db)):
+    show = db.get(Show, show_id)
+    if not show:
+        raise HTTPException(404, "Show not found")
+    hall = db.get(Hall, show.hall_id) if show.hall_id else None
+    if not hall:
+        return None
+    return {"id": hall.id, "name": hall.name, "room_width": hall.room_width,
+            "room_depth": hall.room_depth, "room_height": hall.room_height,
+            "screen": hall.screen, "room_theme": hall.room_theme,
+            "theme_options": hall.theme_options}
 
 
 @router.post("", response_model=ShowOut, status_code=201)

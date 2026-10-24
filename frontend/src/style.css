@@ -39,12 +39,23 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color
 .field-label input[type=color], .section-row input[type=color] { width: 42px; height: 36px; padding: 3px; background: #202127; border: 1px solid #363740; border-radius: 7px; }
 .field-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .color-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.config-step { display: grid; gap: 3px; margin: 18px 0 10px; padding-top: 12px; border-top: 1px solid #303139; }
+.config-step b { color: #e3d3aa; font-size: 12px; }
+.config-step span { color: #83848d; font-size: 10px; }
+.theme-list { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 0 0 15px; }
+.theme-choice { display: grid; overflow: hidden; text-align: left; padding: 0; color: #ddd; background: #1c1d23; border: 1px solid #303139; border-radius: 8px; cursor: pointer; }
+.theme-choice.selected { border-color: #c7a545; box-shadow: inset 0 0 0 1px #c7a545; }
+.theme-choice img { display: block; width: 100%; height: 64px; object-fit: cover; object-position: center 35%; background: #222; }
+.theme-choice span { display: grid; gap: 3px; padding: 7px; }
+.theme-choice b { font-size: 10px; line-height: 1.2; }
+.theme-choice small { color: #888993; font-size: 9px; text-transform: capitalize; }
 .design-list { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: -5px 0 14px; }
-.design-choice { min-height: 58px; display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px; color: #ddd; background: #1c1d23; border: 1px solid #303139; border-radius: 8px; cursor: pointer; }
+.design-choice { min-height: 72px; display: flex; align-items: center; gap: 8px; text-align: left; padding: 6px; color: #ddd; background: #1c1d23; border: 1px solid #303139; border-radius: 8px; cursor: pointer; }
 .design-choice.selected { border-color: #c7a545; box-shadow: inset 0 0 0 1px #c7a545; }
 .design-choice b, .design-choice small { display: block; }
-.design-choice b { font-size: 11px; line-height: 1.25; }
-.design-choice small { margin-top: 3px; color: #888993; font-size: 9px; }
+.design-choice b { font-size: 10px; line-height: 1.2; }
+.design-choice small { margin-top: 3px; color: #888993; font-size: 8px; line-height: 1.3; }
+.seat-thumb { flex: 0 0 48px; width: 48px; height: 55px; object-fit: cover; object-position: center 32%; border-radius: 4px; background: #f4f2ed; }
 .design-dot { flex: 0 0 15px; width: 15px; height: 22px; border: 2px solid #3a373b; border-radius: 7px 7px 4px 4px; }
 .outline-button, .publish-button, .text-button { padding: 9px 12px; color: #ddd; background: #1c1d23; border: 1px solid #3b3c45; border-radius: 7px; cursor: pointer; }
 .outline-button:hover, .design-choice:hover { border-color: #85817a; }

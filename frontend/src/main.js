@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import './style.css';
-import { getHealth, getSeats, getShows, createCheckout, verifyPayment, getPaymentStatus, cancelCheckout } from './api.js';
+import { getHealth, getSeats, getShows, getShowHall, createCheckout, verifyPayment, getPaymentStatus, cancelCheckout } from './api.js';
 import { createTheater } from './theater/scene.js';
 import { SeatManager } from './theater/seats.js';
 import { renderPanel } from './ui/panel.js';
 
-const theater = createTheater(document.getElementById('canvas-wrap'));
-const seats = new SeatManager(theater.scene);
+let theater = null;
+let seats = null;
 const panel = document.getElementById('panel');
 const btnOrbit = document.getElementById('btn-orbit');
 const btnSeat = document.getElementById('btn-seat');
@@ -27,10 +27,19 @@ async function load() {
     const shows = await getShows();
     if (!shows.length) throw new Error('No shows are available yet.');
     show = shows[0];
-    seats.build(await getSeats(show.id));
+    const [hall, showSeats] = await Promise.all([getShowHall(show.id), getSeats(show.id)]);
+    if (seats) seats.dispose();
+    if (theater) theater.dispose();
+    theater = createTheater(document.getElementById('canvas-wrap'), {
+      room: hall ? { width: hall.room_width, depth: hall.room_depth, height: hall.room_height } : undefined,
+      screen: hall?.screen, theme: hall?.room_theme, themeOptions: hall?.theme_options, seats: showSeats,
+    });
+    seats = new SeatManager(theater.scene);
+    seats.build(showSeats);
+    bindSeatPicking();
   } catch (e) {
     show = null;
-    seats.build([]);
+    if (seats) seats.build([]);
     loadError = 'Cannot reach server, retry';
     console.error('Unable to load theater data:', e);
   }
@@ -38,9 +47,9 @@ async function load() {
 }
 
 function refreshUI() {
-  renderPanel(panel, { show, seats: seats.selectedSeats(), busy, error: loadError,
+  renderPanel(panel, { show, seats: seats?.selectedSeats() || [], busy, error: loadError,
     paymentMessage, onBook: book, onRetry: load });
-  btnSeat.disabled = seats.selected.size === 0;
+  btnSeat.disabled = !seats || seats.selected.size === 0;
 }
 
 function loadRazorpay() {
@@ -153,23 +162,25 @@ async function book() {
 const ray = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
 let down = null;
-const canvas = theater.renderer.domElement;
-canvas.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
-canvas.addEventListener('pointerup', (e) => {
-  if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
-  const r = canvas.getBoundingClientRect();
-  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-  ray.setFromCamera(ndc, theater.camera);
-  const id = seats.pick(ray);
-  if (id !== undefined) { seats.toggle(id); refreshUI(); }
-});
+function bindSeatPicking() {
+  const canvas = theater.renderer.domElement;
+  canvas.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
+  canvas.addEventListener('pointerup', (e) => {
+    if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) return;
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, theater.camera);
+    const id = seats.pick(ray);
+    if (id !== undefined) { seats.toggle(id); refreshUI(); }
+  });
+}
 
 // --- camera buttons --------------------------------------------------------
-btnOrbit.onclick = () => { theater.orbitView(); btnOrbit.classList.add('active'); btnSeat.classList.remove('active'); };
+btnOrbit.onclick = () => { theater?.orbitView(); btnOrbit.classList.add('active'); btnSeat.classList.remove('active'); };
 btnSeat.onclick = () => {
-  const first = seats.selectedSeats()[0];
+  const first = seats?.selectedSeats()[0];
   if (!first) return;
-  theater.seatView(first);
+  theater?.seatView(first);
   btnSeat.classList.add('active'); btnOrbit.classList.remove('active');
 };
 btnOrbit.classList.add('active');

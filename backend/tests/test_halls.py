@@ -58,7 +58,7 @@ def test_default_seed_links_all_hall_seats_to_the_demo_show(db):
     assert db.query(ShowSeat).filter_by(show_id=show.id).count() == 108
 
 
-def test_layout_rejects_duplicate_seat_labels(db):
+def test_layout_rejects_overlapping_seat_number_ranges(db):
     owner, _, design, hall = setup_hall(db)
     body = LayoutIn(sections=[SectionIn(name="Classic", base_price=10)], seats=[
         HallSeatIn(section_id=1, design_id=design.id, row_label="A", seat_number=1, label="A1", x=-1, z=5),
@@ -67,7 +67,23 @@ def test_layout_rejects_duplicate_seat_labels(db):
     with pytest.raises(HTTPException) as error:
         replace_layout(hall.id, body, db, owner)
     assert error.value.status_code == 422
-    assert "Duplicate seat number" in error.value.detail
+    assert "Seat numbers overlap" in error.value.detail
+
+
+def test_couple_seat_reserves_two_consecutive_numbers(db):
+    owner, _, design, hall = setup_hall(db)
+    couple = SeatDesign(key="couple", name="Couple", width=1.4, depth=0.8, capacity=2,
+                        price_multiplier=2, default_colors={})
+    db.add(couple)
+    db.flush()
+    body = LayoutIn(sections=[SectionIn(name="Prime", base_price=20)], seats=[
+        HallSeatIn(section_id=1, design_id=couple.id, row_label="D", seat_number=5, label="D5-6", x=-2, z=5),
+        HallSeatIn(section_id=1, design_id=design.id, row_label="D", seat_number=6, label="D6", x=2, z=5),
+    ])
+    with pytest.raises(HTTPException) as error:
+        replace_layout(hall.id, body, db, owner)
+    assert error.value.status_code == 422
+    assert "Seat numbers overlap" in error.value.detail
 
 
 def test_layout_rejects_overlapping_footprints(db):
@@ -80,6 +96,20 @@ def test_layout_rejects_overlapping_footprints(db):
         replace_layout(hall.id, body, db, owner)
     assert error.value.status_code == 422
     assert "overlaps" in error.value.detail
+
+
+def test_layout_rejects_rows_without_recline_clearance(db):
+    owner, _, design, hall = setup_hall(db)
+    design.depth_open = 1.5
+    body = LayoutIn(sections=[SectionIn(name="Prime", base_price=10)], seats=[
+        HallSeatIn(section_id=1, design_id=design.id, row_label="A", seat_number=1, label="A1", x=-1, z=5,
+                   design_options={"recline": True}),
+        HallSeatIn(section_id=1, design_id=design.id, row_label="B", seat_number=1, label="B1", x=-1, z=6.8),
+    ])
+    with pytest.raises(HTTPException) as error:
+        replace_layout(hall.id, body, db, owner)
+    assert error.value.status_code == 422
+    assert "need at least 2.00 m of pitch" in error.value.detail
 
 
 @pytest.mark.skipif(not os.getenv("TEST_DATABASE_URL"), reason="Set TEST_DATABASE_URL to a disposable PostgreSQL database")

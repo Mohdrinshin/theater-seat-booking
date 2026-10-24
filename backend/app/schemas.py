@@ -24,6 +24,7 @@ class SeatOut(BaseModel):
     rotation_y: float | None = None
     design: str | None = None
     colors: dict | None = None
+    design_options: dict = Field(default_factory=dict)
     label: str | None = None
     capacity: int = 1
 
@@ -61,9 +62,21 @@ class DesignOut(BaseModel):
     name: str
     width: float
     depth: float
+    depth_closed: float
+    depth_open: float
     capacity: int
     price_multiplier: float
+    tier: str
+    upholstery: str
     default_colors: dict
+
+
+class RoomThemeOut(BaseModel):
+    id: int
+    key: str
+    name: str
+    default_seat: str
+    config: dict
 
 
 class HallIn(BaseModel):
@@ -72,6 +85,8 @@ class HallIn(BaseModel):
     room_depth: float = Field(default=30, gt=0)
     room_height: float = Field(default=12, gt=0)
     screen: dict = Field(default_factory=lambda: {"width": 16, "height": 7, "curve": 0, "x": 0, "y": 4.2, "z": 0, "aspect": 16 / 7})
+    room_theme: str = "multiplex"
+    theme_options: dict = Field(default_factory=lambda: {"accent": True, "accentColor": "#ffb35a", "accentLevel": 0.35, "shadows": True, "haze": False, "dust": False, "quality": "high"})
 
 
 class SectionIn(BaseModel):
@@ -92,6 +107,7 @@ class HallSeatIn(BaseModel):
     z: float
     rotation_y: float = 0
     colors: dict = Field(default_factory=dict)
+    design_options: dict = Field(default_factory=dict)
     is_active: bool = True
 
 
@@ -114,6 +130,8 @@ class HallOut(BaseModel):
     room_depth: float
     room_height: float
     screen: dict
+    room_theme: str = "multiplex"
+    theme_options: dict = Field(default_factory=dict)
     sections: list[dict]
     seats: list[dict]
 
@@ -122,12 +140,12 @@ class HallOut(BaseModel):
         return cls(
             id=hall.id, owner_id=hall.owner_id, name=hall.name, status=hall.status,
             room_width=hall.room_width, room_depth=hall.room_depth, room_height=hall.room_height,
-            screen=hall.screen,
+            screen=hall.screen, room_theme=hall.room_theme, theme_options=hall.theme_options,
             sections=[{"id": s.id, "name": s.name, "base_price": s.base_price, "color": s.color} for s in hall.sections],
             seats=[{"id": s.id, "section_id": s.section_id, "design_id": s.design_id,
                     "row_label": s.row_label, "seat_number": s.seat_number, "label": s.label,
                     "x": s.x, "y": s.y, "z": s.z, "rotation_y": s.rotation_y,
-                    "colors": s.colors, "is_active": s.is_active} for s in hall.hall_seats],
+                    "colors": s.colors, "design_options": s.design_options, "is_active": s.is_active} for s in hall.hall_seats],
         )
 
 
