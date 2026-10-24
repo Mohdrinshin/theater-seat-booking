@@ -1,15 +1,19 @@
 import * as THREE from 'three';
 import './style.css';
-import { getHealth, getSeats, getShows, bookSeats } from './api.js';
+import { getHealth, getSeats, getShows, holdSeats, bookSeats } from './api.js';
 import { createTheater } from './theater/scene.js';
 import { SeatManager } from './theater/seats.js';
 import { renderPanel } from './ui/panel.js';
+import { createBuilder } from './ui/builder.js';
 
 const theater = createTheater(document.getElementById('canvas-wrap'));
 const seats = new SeatManager(theater.scene);
 const panel = document.getElementById('panel');
 const btnOrbit = document.getElementById('btn-orbit');
 const btnSeat = document.getElementById('btn-seat');
+const btnBuilder = document.getElementById('btn-builder');
+const builderRoot = document.getElementById('builder');
+let builder = null;
 
 let show = null;
 let busy = false;
@@ -42,7 +46,10 @@ async function book() {
   if (!show) return;
   busy = true; refreshUI();
   try {
-    await bookSeats(show.id, [...seats.selected]);
+    const selected = seats.selectedSeats();
+    const ids = selected.map((seat) => seat.id);
+    const hold = Number.isFinite(selected[0]?.x) ? await holdSeats(show.id, ids) : null;
+    await bookSeats(show.id, ids, hold?.hold_token);
     theater.orbitView();
     await load();
     alert('Booked!');
@@ -74,9 +81,20 @@ btnOrbit.onclick = () => { theater.orbitView(); btnOrbit.classList.add('active')
 btnSeat.onclick = () => {
   const first = seats.selectedSeats()[0];
   if (!first) return;
-  theater.seatView(first.row, first.number);
+  theater.seatView(first);
   btnSeat.classList.add('active'); btnOrbit.classList.remove('active');
 };
 btnOrbit.classList.add('active');
+
+btnBuilder.onclick = () => {
+  document.getElementById('app').hidden = true;
+  builderRoot.hidden = false;
+  builder = createBuilder(builderRoot, () => {
+    builder?.destroy();
+    builder = null;
+    builderRoot.hidden = true;
+    document.getElementById('app').hidden = false;
+  });
+};
 
 load();

@@ -57,11 +57,18 @@ export function createTheater(container) {
   ctx.font = '22px system-ui, sans-serif';
   ctx.fillText('The show will begin shortly', 70, 270);
   const posterTexture = new THREE.CanvasTexture(posterCanvas);
+  const curveRadians = (SCREEN.curve || 0) * Math.PI / 180;
+  const screenGeometry = curveRadians > 0.02
+    ? new THREE.CylinderGeometry(
+      SCREEN.width / curveRadians, SCREEN.width / curveRadians, SCREEN.height,
+      64, 1, true, -curveRadians / 2, curveRadians,
+    )
+    : new THREE.PlaneGeometry(SCREEN.width, SCREEN.height);
   const screen = new THREE.Mesh(
-    new THREE.PlaneGeometry(SCREEN.width, SCREEN.height),
+    screenGeometry,
     new THREE.MeshBasicMaterial({ map: posterTexture, color: 0x45434a, toneMapped: false })
   );
-  screen.position.set(0, SCREEN.y, SCREEN.z);
+  screen.position.set(0, SCREEN.y, curveRadians > 0.02 ? SCREEN.z - SCREEN.width / curveRadians : SCREEN.z);
   scene.add(screen);
 
   // --- lights -----------------------------------------------------------
@@ -85,8 +92,10 @@ export function createTheater(container) {
     camera.fov = 55; camera.updateProjectionMatrix();
     controls.update();
   }
-  function seatView(row, number) {
-    const p = seatPosition(row, number);
+  function seatView(seatOrRow, number) {
+    const p = typeof seatOrRow === 'object'
+      ? (Number.isFinite(seatOrRow.x) && Number.isFinite(seatOrRow.z) ? seatOrRow : seatPosition(seatOrRow.row, seatOrRow.number))
+      : seatPosition(seatOrRow, number);
     camera.position.set(p.x, p.y + 1.25, p.z);     // eye height
     controls.target.set(0, SCREEN.y, SCREEN.z);    // look at screen
     controls.minDistance = 0.01;
