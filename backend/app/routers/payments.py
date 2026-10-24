@@ -121,6 +121,9 @@ def create_checkout_order(show_id: int, body: CheckoutCreate, db: Session = Depe
     amount_paise = int(total * 100)
     if amount_paise < 100:
         raise HTTPException(422, "Razorpay requires a minimum payment of ₹1.00")
+    max_amount_paise = int(os.getenv("RAZORPAY_MAX_AMOUNT_PAISE", "0") or "0")
+    if max_amount_paise and amount_paise > max_amount_paise:
+        raise HTTPException(422, f"Checkout is limited to ₹{max_amount_paise / 100:.2f} while payment testing is enabled.")
     for row in rows:
         row.status, row.held_until, row.held_by = "held", expiry, token
 

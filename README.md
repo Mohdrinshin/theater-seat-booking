@@ -38,6 +38,8 @@ The secret stays on the backend; only the public key ID is sent to Standard Chec
 The backend calculates the GST-inclusive amount, creates the Razorpay order, holds
 seats, verifies the Checkout HMAC signature, confirms captured payments, and books
 the seats. Expired holds on payments captured too late trigger a refund attempt.
+Set `RAZORPAY_MAX_AMOUNT_PAISE=300` to cap all orders at ₹3.00 during testing;
+the limit is enforced by the backend after GST is added.
 
 Configure a Razorpay webhook to send `payment.captured` events to
 `https://<your-api-host>/api/payments/webhook`, using the same webhook secret in
