@@ -4,6 +4,7 @@ const json = async (res) => {
 };
 
 export const getShows = () => fetch('/api/shows').then(json);
+export const getHealth = () => fetch('/api/health').then(json);
 export const getSeats = (showId) => fetch(`/api/shows/${showId}/seats`).then(json);
 export const bookSeats = (showId, seatIds) =>
   fetch(`/api/shows/${showId}/book`, {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import './style.css';
-import { getSeats, getShows, bookSeats } from './api.js';
+import { getHealth, getSeats, getShows, bookSeats } from './api.js';
 import { createTheater } from './theater/scene.js';
 import { SeatManager } from './theater/seats.js';
 import { renderPanel } from './ui/panel.js';
@@ -13,19 +13,33 @@ const btnSeat = document.getElementById('btn-seat');
 
 let show = null;
 let busy = false;
+let loadError = '';
 
 async function load() {
-  [show] = await getShows();
-  seats.build(await getSeats(show.id));
+  loadError = '';
+  refreshUI();
+  try {
+    await getHealth();
+    const shows = await getShows();
+    if (!shows.length) throw new Error('No shows are available yet.');
+    show = shows[0];
+    seats.build(await getSeats(show.id));
+  } catch (e) {
+    show = null;
+    seats.build([]);
+    loadError = 'Cannot reach server, retry';
+    console.error('Unable to load theater data:', e);
+  }
   refreshUI();
 }
 
 function refreshUI() {
-  renderPanel(panel, { show, seats: seats.selectedSeats(), busy, onBook: book });
+  renderPanel(panel, { show, seats: seats.selectedSeats(), busy, error: loadError, onBook: book, onRetry: load });
   btnSeat.disabled = seats.selected.size === 0;
 }
 
 async function book() {
+  if (!show) return;
   busy = true; refreshUI();
   try {
     await bookSeats(show.id, [...seats.selected]);

@@ -35,9 +35,31 @@ export function createTheater(container) {
   scene.add(back);
 
   // --- screen -----------------------------------------------------------
+  const posterCanvas = document.createElement('canvas');
+  posterCanvas.width = 1024;
+  posterCanvas.height = 448;
+  const ctx = posterCanvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 1024, 448);
+  gradient.addColorStop(0, '#11121b');
+  gradient.addColorStop(0.55, '#25202b');
+  gradient.addColorStop(1, '#090a10');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 1024, 448);
+  ctx.fillStyle = 'rgba(198, 40, 54, 0.24)';
+  ctx.beginPath(); ctx.arc(770, 245, 250, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#b9a77b';
+  ctx.font = '600 25px system-ui, sans-serif';
+  ctx.fillText('NOW SHOWING', 70, 150);
+  ctx.fillStyle = '#f2e8d0';
+  ctx.font = '700 52px system-ui, sans-serif';
+  ctx.fillText('YOUR MOVIE', 70, 220);
+  ctx.fillStyle = 'rgba(242, 232, 208, 0.65)';
+  ctx.font = '22px system-ui, sans-serif';
+  ctx.fillText('The show will begin shortly', 70, 270);
+  const posterTexture = new THREE.CanvasTexture(posterCanvas);
   const screen = new THREE.Mesh(
     new THREE.PlaneGeometry(SCREEN.width, SCREEN.height),
-    new THREE.MeshBasicMaterial({ color: 0xdfe9ff })   // TODO: swap for a VideoTexture/poster
+    new THREE.MeshBasicMaterial({ map: posterTexture, color: 0x45434a, toneMapped: false })
   );
   screen.position.set(0, SCREEN.y, SCREEN.z);
   scene.add(screen);

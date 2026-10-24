@@ -2,6 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 from .db import Base, SessionLocal, engine
 from .routers import shows
 from .seed import seed
@@ -27,4 +28,7 @@ app.include_router(shows.router)
 
 @app.get("/api/health")
 def health():
-    return {"ok": True}
+    """Report API and database readiness for the frontend startup check."""
+    with engine.connect() as connection:
+        connection.execute(text("SELECT 1"))
+    return {"ok": True, "database": "ready"}

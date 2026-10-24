@@ -1,7 +1,16 @@
 const GST = 0.18;
 const fmt = (n) => '₹' + n.toFixed(2);
 
-export function renderPanel(el, { show, seats, onBook, busy }) {
+export function renderPanel(el, { show, seats, onBook, busy, error, onRetry }) {
+  if (error) {
+    el.innerHTML = `<div class="error-state"><h2>Theater unavailable</h2><p>${error}</p><button id="retry">Retry connection</button></div>`;
+    el.querySelector('#retry').onclick = onRetry;
+    return;
+  }
+  if (!show) {
+    el.innerHTML = '<div class="loading-state">Connecting to theater…</div>';
+    return;
+  }
   const base = seats.reduce((a, s) => a + s.price, 0);
   const total = base * (1 + GST);
   el.innerHTML = `
