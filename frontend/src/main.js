@@ -15,6 +15,8 @@ const builderRoot = document.getElementById('builder');
 let builder = null;
 
 let show = null;
+let shows = [];
+let selectedShowId = null;
 let busy = false;
 let loadError = '';
 let paymentMessage = '';
@@ -24,10 +26,20 @@ async function load() {
   refreshUI();
   try {
     await getHealth();
-    const shows = await getShows();
+    shows = await getShows();
     if (!shows.length) throw new Error('No shows are available yet.');
-    show = shows[0];
-    const [hall, showSeats] = await Promise.all([getShowHall(show.id), getSeats(show.id)]);
+    let showSeats;
+    if (selectedShowId !== null && shows.some((item) => item.id === selectedShowId)) {
+      show = shows.find((item) => item.id === selectedShowId);
+      showSeats = await getSeats(show.id);
+    } else {
+      const candidates = await Promise.all(shows.map(async (item) => ({ item, seats: await getSeats(item.id) })));
+      const preferred = candidates.reduce((best, candidate) => candidate.seats.length > best.seats.length ? candidate : best);
+      show = preferred.item;
+      selectedShowId = show.id;
+      showSeats = preferred.seats;
+    }
+    const hall = await getShowHall(show.id);
     if (seats) seats.dispose();
     if (theater) theater.dispose();
     theater = createTheater(document.getElementById('canvas-wrap'), {
@@ -40,7 +52,7 @@ async function load() {
   } catch (e) {
     show = null;
     if (seats) seats.build([]);
-    loadError = 'Cannot reach server, retry';
+    loadError = 'The API at http://localhost:8000 is unavailable. Start PostgreSQL and the backend, then retry.';
     console.error('Unable to load theater data:', e);
   }
   refreshUI();
@@ -48,7 +60,8 @@ async function load() {
 
 function refreshUI() {
   renderPanel(panel, { show, seats: seats?.selectedSeats() || [], busy, error: loadError,
-    paymentMessage, onBook: book, onRetry: load });
+    shows, paymentMessage, onBook: book, onRetry: load,
+    onShowChange: (id) => { selectedShowId = id; load(); } });
   btnSeat.disabled = !seats || seats.selected.size === 0;
 }
 

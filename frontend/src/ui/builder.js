@@ -227,7 +227,9 @@ export function createBuilder(root, onExit) {
       state.error = '';
     } catch (error) {
       state.message = '';
-      state.error = error.message;
+      state.error = error.message === 'A published hall with future shows only allows a rename'
+        ? 'This published hall has a future show, so its layout and theme cannot be changed. To create a new theater, choose “New hall…” from the Hall menu first.'
+        : error.message;
     }
     draw();
   }

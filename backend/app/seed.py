@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from sqlalchemy.orm import Session
 from .auth import hash_password
-from .models import Hall, HallSection, HallSeat, RoomTheme, Seat, SeatDesign, Show, ShowSeat, User
+from .models import Hall, HallSection, HallSeat, PaymentAttempt, RoomTheme, Seat, SeatDesign, Show, ShowSeat, User
 
 CLASSIC_ROWS, PRIME_ROWS = list("ABCDEFG"), list("HJ")   # PVR skips "I"
 CLASSIC_PRICE, PRIME_PRICE = 745.76, 889.82
@@ -104,8 +104,9 @@ def seed(db: Session) -> None:
         hall.theme_options = hall.theme_options or {"accent": True, "accentColor": "#ffb35a", "accentLevel": 0.35,
                                                     "shadows": True, "haze": False, "dust": False, "quality": "high"}
         show.hall_id = hall.id
-        if not db.query(ShowSeat).filter_by(show_id=show.id).count():
-            legacy = {(s.row, s.number): s for s in db.query(Seat).filter_by(show_id=show.id).all()}
+        legacy = {(s.row, s.number): s for s in db.query(Seat).filter_by(show_id=show.id).all()}
+        show_seats = db.query(ShowSeat).filter_by(show_id=show.id).all()
+        if not show_seats:
             sections = {s.id: s for s in db.query(HallSection).filter_by(hall_id=hall.id).all()}
             designs_by_id = {d.id: d for d in db.query(SeatDesign).all()}
             for hall_seat in db.query(HallSeat).filter_by(hall_id=hall.id, is_active=True).all():
@@ -115,4 +116,16 @@ def seed(db: Session) -> None:
                 db.add(ShowSeat(show_id=show.id, hall_seat_id=hall_seat.id,
                                 price=old.price if old else round(section.base_price * design.price_multiplier, 2),
                                 status="booked" if old and old.status == "occupied" else "available"))
+        elif not db.query(PaymentAttempt).filter_by(show_id=show.id).count():
+            # The demo hall was migrated from legacy seats. Keep its initial seat
+            # availability in sync until it has payment history; never reset seats
+            # for a show that may contain completed bookings.
+            hall_seats = {seat.id: seat for seat in db.query(HallSeat).filter_by(hall_id=hall.id).all()}
+            for show_seat in show_seats:
+                hall_seat = hall_seats.get(show_seat.hall_seat_id)
+                old = legacy.get((hall_seat.row_label, hall_seat.seat_number)) if hall_seat else None
+                if old:
+                    show_seat.status = "booked" if old.status == "occupied" else "available"
+                    show_seat.held_until = None
+                    show_seat.held_by = None
     db.commit()

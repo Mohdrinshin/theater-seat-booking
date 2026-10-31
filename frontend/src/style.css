@@ -4,6 +4,8 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color
 #canvas-wrap { position: relative; min-width: 0; }
 #canvas-wrap canvas { display: block; }
 #panel { padding: 20px; background: #14141a; border-left: 1px solid #26262e; overflow: auto; }
+#panel .show-picker { display: block; color: #999; font-size: 12px; margin-bottom: 16px; }
+#panel .show-picker select { display: block; width: 100%; margin-top: 6px; padding: 9px; color: #eee; background: #202027; border: 1px solid #3b3c45; border-radius: 7px; }
 #panel h2 { margin: 0 0 4px; font-size: 18px; }
 #panel .sub { color: #999; font-size: 13px; margin-bottom: 16px; }
 #panel .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #222; font-size: 14px; }

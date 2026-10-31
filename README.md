@@ -3,22 +3,32 @@
 Stack: Three.js (Vite) + FastAPI + PostgreSQL
 
 ## Run
-```bash
-# 1. database
-docker compose up -d
+Start each service in its own terminal from the repository root:
 
-# 2. backend (http://localhost:8000/docs)
+**Terminal 1 — database**
+```bash
+docker compose up -d
+```
+
+**Terminal 2 — backend** (http://localhost:8000/docs)
+```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
 uvicorn app.main:app --reload
-
-# 3. frontend (http://localhost:5173)
-cd frontend
-npm install
-npm run dev
 ```
+
+**Terminal 3 — frontend** (http://localhost:5173)
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+The frontend only serves the UI. Keep the database and backend running; Vite
+forwards `/api` requests to `http://localhost:8000`. If the viewer shows
+**Theater unavailable**, check that the backend terminal is still running and
+that `http://localhost:8000/api/health` responds before retrying.
 Alembic upgrades the database at backend startup. The demo show and the published
 `PVR Vegas` hall are seeded from the starter map (Classic rows A-G, Prime rows H/J,
 three blocks of four seats). The existing `shows` and `seats` data is retained and
