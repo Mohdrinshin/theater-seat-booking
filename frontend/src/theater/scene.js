@@ -4,7 +4,7 @@ import { SCREEN, seatPosition } from './layout.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { createTheaterRenderer } from '../designs/render/renderer.js';
-import { buildRoom } from '../designs/rooms/buildRoom.js';
+import { buildRoom, createCarpetTexture } from '../designs/rooms/buildRoom.js';
 import { ROOM_THEME_BY_KEY } from '../designs/registry.js';
 import { createScreenTexture } from '../designs/fx/screenTexture.js';
 import { applyFX, createOptionalDust, createOptionalHaze } from '../designs/fx/applyFX.js';
@@ -42,6 +42,7 @@ export function createTheater(container, options = {}) {
   const shellGeometries = [];
 
   const wallMat = new THREE.MeshStandardMaterial({ color: 0x1c1c24, roughness: 0.95 });
+  const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x09090d, roughness: 0.9 });
   for (const side of [-1, 1]) {
     const wall = new THREE.Mesh(new THREE.BoxGeometry(0.3, room.height, room.depth), wallMat);
     shellGeometries.push(wall.geometry);
@@ -52,7 +53,7 @@ export function createTheater(container, options = {}) {
   shellGeometries.push(back.geometry);
   back.position.set(0, room.height / 2, room.depth);
   scene.add(back);
-  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(room.width, .3, room.depth), wallMat);
+  const ceiling = new THREE.Mesh(new THREE.BoxGeometry(room.width, .3, room.depth), ceilingMat);
   ceiling.position.set(0, room.height, room.depth / 2); shellGeometries.push(ceiling.geometry); scene.add(ceiling);
   const front = new THREE.Mesh(new THREE.BoxGeometry(room.width, room.height, .3), wallMat);
   front.position.set(0, room.height / 2, -.15); shellGeometries.push(front.geometry); scene.add(front);
@@ -91,6 +92,7 @@ export function createTheater(container, options = {}) {
   scene.add(top);
 
   let themedRoom = null;
+  let floorTexture = null;
   const optionalHaze = createOptionalHaze(room.width, room.depth);
   const optionalDust = createOptionalDust(room.width, room.depth);
   scene.add(optionalHaze, optionalDust);
@@ -98,6 +100,11 @@ export function createTheater(container, options = {}) {
     themedRoom?.dispose();
     const theme = ROOM_THEME_BY_KEY[themeKey] || ROOM_THEME_BY_KEY.multiplex;
     floorMat.color.set(theme.palette.carpet); wallMat.color.set(theme.palette.wall);
+    ceilingMat.color.set(theme.palette.ceiling || theme.palette.wall);
+    floorTexture?.dispose();
+    floorTexture = theme.style === 'crimson-premiere' ? createCarpetTexture(room.width, room.depth) : null;
+    floorMat.map = floorTexture;
+    floorMat.needsUpdate = true;
     scene.environmentIntensity = (themeKey === 'immersive' ? 0.22 : 0.28) * (quality === 'medium' ? .5 : 1);
     if (themeOptions.shadows === false || quality === 'low') renderer.shadowMap.enabled = false;
     else renderer.shadowMap.enabled = true;
@@ -164,7 +171,7 @@ export function createTheater(container, options = {}) {
     controls.dispose();
     themedRoom?.dispose();
     removeEventListener('resize', resize);
-    floor.geometry.dispose(); shellGeometries.forEach((geometry) => geometry.dispose()); floorMat.dispose(); wallMat.dispose();
+    floor.geometry.dispose(); shellGeometries.forEach((geometry) => geometry.dispose()); floorTexture?.dispose(); floorMat.dispose(); wallMat.dispose(); ceilingMat.dispose();
     screen.geometry.dispose(); posterTexture.dispose(); screen.material.dispose();
     optionalHaze.geometry.dispose(); optionalHaze.material.dispose();
     optionalDust.geometry.dispose(); optionalDust.material.dispose();

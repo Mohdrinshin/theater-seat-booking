@@ -10,6 +10,13 @@ import { computeRoomLayout } from '../designs/rooms/layout.js';
 const escapeHtml = (s = '') => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ROWS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'.split('');
 
+function finishForRow(theme, rowIndex, baseFinish) {
+  const zones = theme?.seatZones;
+  if (!zones) return { ...baseFinish };
+  const fraction = rowIndex / Math.max(1, theme.layout.rows - 1);
+  return { ...baseFinish, uph: fraction >= zones.middleStart && fraction <= zones.middleEnd ? theme.palette.seatMid : theme.palette.seatFront };
+}
+
 export function createBuilder(root, onExit) {
   const state = {
     token: localStorage.getItem('theater-owner-token') || '',
@@ -69,7 +76,7 @@ export function createBuilder(root, onExit) {
     if (design) state.seats.forEach((seat) => {
       const row = rowOrder.get(seat.row_label) || 0;
       seat.design_id = design.id;
-      seat.colors = { ...theme.defaultFinish };
+      seat.colors = finishForRow(theme, row, theme.defaultFinish);
       seat.design_options = { recline: theme.defaultSeat === 'vip', centerArm: true };
       seat.z = Number((layout.front + row * room.pitch).toFixed(3));
       seat.y = Number((row * layout.riser).toFixed(3));
@@ -77,9 +84,11 @@ export function createBuilder(root, onExit) {
     state.form.room_width = Number(room.width.toFixed(2));
     state.form.room_depth = Number(room.depth.toFixed(2));
     state.form.room_height = Number(room.height.toFixed(2));
-    const screenBottom = Math.max(layout.stage + 1.8, (room.height - room.screenHeight) / 2);
-    state.form.screen = { width: Number(room.screenWidth.toFixed(2)), height: Number(room.screenHeight.toFixed(2)), curve: 0,
-      x: 0, y: Number(Math.min(room.height - .5 - room.screenHeight / 2, screenBottom + room.screenHeight / 2).toFixed(2)), z: 0, aspect: layout.aspect };
+    const screenBottom = key === 'crimson-premiere' ? layout.stage + 1.8 : layout.stage + .45;
+    const screenHeight = Math.min(room.screenHeight, room.height - screenBottom - .5);
+    const screenWidth = Math.min(room.screenWidth, screenHeight * layout.aspect);
+    state.form.screen = { width: Number(screenWidth.toFixed(2)), height: Number(screenHeight.toFixed(2)), curve: 0,
+      x: 0, y: Number((screenBottom + screenHeight / 2).toFixed(2)), z: 0, aspect: layout.aspect };
     state.message = `${theme.name} theme selected`;
     draw();
   }
@@ -368,6 +377,9 @@ export function createBuilder(root, onExit) {
       const row = root.querySelector('#row-label').value.trim().toUpperCase() || 'A';
       const design = state.designs.find((d) => d.id === Number(state.designId));
       if (!design) return false;
+      const theme = ROOM_THEMES.find((entry) => entry.key === state.roomTheme);
+      const rowIndex = [...new Set(state.seats.map((seat) => seat.row_label))].indexOf(row);
+      const colorIndex = rowIndex < 0 ? new Set(state.seats.map((seat) => seat.row_label)).size : rowIndex;
       const minStep = Math.max(0.35, design.width + 0.06);
       if (placementPath && Math.hypot(x - placementPath.x, z - placementPath.z) < minStep) return false;
       const number = Math.max(0, ...state.seats.filter((s) => s.row_label === row).map((s) => {
@@ -377,7 +389,7 @@ export function createBuilder(root, onExit) {
       const label = design.capacity > 1 ? `${row}${number}-${number + design.capacity - 1}` : `${row}${number}`;
       state.seats.push({ row_label: row, seat_number: number, label, x, y: 0, z,
         rotation_y: 0, design_id: design.id, sectionIndex: state.sectionIndex,
-        colors: { ...design.default_colors, ...(state.colorOverrides || {}) }, design_options: { ...state.seatOptions }, is_active: true });
+        colors: { ...finishForRow(theme, colorIndex, design.default_colors), ...(state.colorOverrides || {}) }, design_options: { ...state.seatOptions }, is_active: true });
       placementPath = { x, z };
       return true;
     };
@@ -404,7 +416,8 @@ export function createBuilder(root, onExit) {
     const design = state.designs.find((d) => d.id === Number(state.designId));
     if (!design) { state.error = 'Choose a seat design first.'; draw(); return; }
     const step = design.width + 0.06;
-    const blockGap = count > 4 ? 0.75 : 0;
+    const theme = ROOM_THEMES.find((entry) => entry.key === state.roomTheme);
+    const blockGap = count > 4 ? (state.roomTheme === 'crimson-premiere' ? theme.layout.aisle : 0.75) : 0;
     const blocks = Math.ceil((count * design.capacity) / 4);
     const totalWidth = count * step + Math.max(0, blocks - 1) * blockGap;
     const existingRows = [...new Set(state.seats.map((s) => s.row_label))];
@@ -420,7 +433,7 @@ export function createBuilder(root, onExit) {
         x: -totalWidth / 2 + offset + design.width / 2, y: rowDepth * state.layout.riser,
         z: Math.min(state.form.room_depth - depth / 2, Math.max(depth / 2, 4 + rowDepth * pitch)),
         rotation_y: 0, design_id: design.id, sectionIndex: state.sectionIndex,
-        colors: { ...design.default_colors, ...(state.colorOverrides || {}) }, design_options: { ...state.seatOptions }, is_active: true });
+        colors: { ...finishForRow(theme, rowDepth, design.default_colors), ...(state.colorOverrides || {}) }, design_options: { ...state.seatOptions }, is_active: true });
     }
     state.error = ''; draw();
   }

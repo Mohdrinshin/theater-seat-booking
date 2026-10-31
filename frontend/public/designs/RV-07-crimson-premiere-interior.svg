@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 460" role="img" aria-label="Crimson auditorium with glowing side-wall lines and stepped seating">
+  <defs>
+    <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#111116"/><stop offset=".6" stop-color="#4a1726"/><stop offset="1" stop-color="#170d14"/></linearGradient>
+    <linearGradient id="floor" x2="0" y2="1"><stop stop-color="#541126"/><stop offset="1" stop-color="#a11f48"/></linearGradient>
+    <linearGradient id="screen" x2="0" y2="1"><stop stop-color="#e9c79d"/><stop offset=".5" stop-color="#7e4850"/><stop offset="1" stop-color="#271a26"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="800" height="460" fill="#08080b"/>
+  <path d="M0 55 400 10 800 55 800 305 400 255 0 305Z" fill="url(#wall)"/>
+  <path d="M80 10 400 0 720 10 800 70 400 32 0 70Z" fill="#09090d"/>
+  <path d="M310 95h180v95H310z" fill="url(#screen)" stroke="#614047" stroke-width="6"/>
+  <g fill="none" stroke="#ffe8cf" stroke-width="4" opacity=".92" filter="url(#glow)">
+    <path d="M8 290 80 110 150 270 220 95 286 257"/><path d="M792 290 720 110 650 270 580 95 514 257"/>
+    <path d="M0 78 400 33 800 78" stroke="#ffcf94" stroke-width="5"/>
+  </g>
+  <path d="M0 280 400 230 800 280V460H0Z" fill="url(#floor)"/>
+  <g fill="#17171b" stroke="#09090c" stroke-width="4">
+    <path d="M80 279h60v43H80zM150 270h58v52h-58zM218 263h55v59h-55zM527 263h55v59h-55zM592 270h58v52h-58zM660 279h60v43h-60z"/>
+    <path d="M60 323h92v36H60zM164 315h90v44h-90zM264 307h90v52h-90zM446 307h90v52h-90zM546 315h90v44h-90zM648 323h92v36h-92z"/>
+    <path d="M22 363h120v36H22zM155 359h120v40H155zM284 356h112v43H284zM405 356h112v43H405zM524 359h120v40H524zM658 363h120v36H658z"/>
+  </g>
+  <g fill="#9a4051"><path d="M85 279h50v22H85zM154 270h50v24h-50zM222 263h47v27h-47zM531 263h47v27h-47zM596 270h50v24h-50zM665 279h50v22h-50z"/><path d="M66 323h80v18H66zM170 315h78v20h-78zM270 307h78v23h-78zM452 307h78v23h-78zM552 315h78v20h-78zM654 323h80v18h-80z"/><path d="M28 363h108v19H28zM161 359h108v21H161zM290 356h100v23H290zM411 356h100v23H411zM530 359h108v21H530zM664 363h108v19H664z"/></g>
+  <g fill="#ffb04e" filter="url(#glow)"><path d="M390 302h20v10h-20zM390 344h20v10h-20zM390 387h20v10h-20zM390 430h20v10h-20z"/></g>
+  <g fill="#fff1df"><circle cx="90" cy="72" r="3"/><circle cx="230" cy="55" r="3"/><circle cx="570" cy="55" r="3"/><circle cx="710" cy="72" r="3"/></g>
+  <path d="M0 0h800v460H0z" fill="none" stroke="#08080b" stroke-width="14"/>
+</svg>
