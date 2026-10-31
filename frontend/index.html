@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Theater 3D</title>
   </head>
   <body>
@@ -12,8 +12,10 @@
       <div id="toolbar">
         <button id="btn-orbit">Orbit</button>
         <button id="btn-seat" disabled>View from seat</button>
+        <button id="btn-audio" type="button" aria-label="Turn ambience on" aria-pressed="false">Sound: Off</button>
         <button id="btn-builder">Owner studio</button>
       </div>
+      <a id="cinema-preview-link" href="/cinema-preview.html">Explore premium auditorium</a>
       <div id="legend"><i class="av"></i>Available <i class="se"></i>Selected <i class="oc"></i>Occupied</div>
     </div>
     <section id="builder" hidden></section>

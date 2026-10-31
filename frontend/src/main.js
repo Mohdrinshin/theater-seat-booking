@@ -10,8 +10,13 @@ let seats = null;
 const panel = document.getElementById('panel');
 const btnOrbit = document.getElementById('btn-orbit');
 const btnSeat = document.getElementById('btn-seat');
+const btnAudio = document.getElementById('btn-audio');
 const btnBuilder = document.getElementById('btn-builder');
 const builderRoot = document.getElementById('builder');
+const ambience = new Audio('/assets/audio/ambience.mp3');
+ambience.loop = true;
+ambience.volume = 0.25;
+let ambienceOn = false;
 let builder = null;
 
 let show = null;
@@ -52,7 +57,9 @@ async function load() {
   } catch (e) {
     show = null;
     if (seats) seats.build([]);
-    loadError = 'The API at http://localhost:8000 is unavailable. Start PostgreSQL and the backend, then retry.';
+    loadError = e instanceof TypeError && e.message === 'Failed to fetch'
+      ? 'The API at http://localhost:8000 is unavailable. Start PostgreSQL and the backend, then retry.'
+      : `Unable to load theater data: ${e?.message || 'Unknown error.'}`;
     console.error('Unable to load theater data:', e);
   }
   refreshUI();
@@ -197,6 +204,26 @@ btnSeat.onclick = () => {
   btnSeat.classList.add('active'); btnOrbit.classList.remove('active');
 };
 btnOrbit.classList.add('active');
+
+btnAudio.onclick = async () => {
+  if (ambienceOn) {
+    ambience.pause();
+    ambienceOn = false;
+  } else {
+    try {
+      await ambience.play();
+      ambienceOn = true;
+    } catch (error) {
+      console.warn('Could not start auditorium ambience:', error);
+    }
+  }
+  btnAudio.textContent = `Sound: ${ambienceOn ? 'On' : 'Off'}`;
+  btnAudio.setAttribute('aria-pressed', String(ambienceOn));
+  btnAudio.setAttribute('aria-label', `Turn ambience ${ambienceOn ? 'off' : 'on'}`);
+  btnAudio.classList.toggle('active', ambienceOn);
+};
+
+window.addEventListener('pagehide', () => ambience.pause(), { once: true });
 
 btnBuilder.onclick = async () => {
   const { createBuilder } = await import('./ui/builder.js');

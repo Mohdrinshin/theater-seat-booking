@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" width="640" height="220">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd27a"/>
+      <stop offset="1" stop-color="#e08a1e"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="220" fill="none"/>
+  <g fill="none" stroke="url(#g)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 60 L70 160 M70 60 H112 A26 26 0 0 1 112 112 H70"/>
+    <path d="M52 40 H40 V180 H52"/>
+    <path d="M150 40 H162 V180 H150" transform="translate(-8 0)"/>
+  </g>
+  <text x="196" y="132" font-family="Helvetica, Arial, sans-serif" font-size="84" font-weight="700"
+        letter-spacing="6" fill="url(#g)">YOUR&#160;BRAND</text>
+  <text x="200" y="170" font-family="Helvetica, Arial, sans-serif" font-size="22" letter-spacing="14"
+        fill="#e9d8c0" opacity="0.85">CINEMA</text>
+</svg>

@@ -17,9 +17,11 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color
 #panel .error-state p { color: #d5a4a7; line-height: 1.5; }
 #panel .error-state button { background: #f5c400; color: #16130a; }
 #panel .loading-state { color: #aaa; padding-top: 12px; }
-#toolbar { position: absolute; left: 16px; top: 16px; display: flex; gap: 8px; }
+#toolbar { position: absolute; left: 16px; top: 16px; display: flex; flex-wrap: wrap; max-width: calc(100vw - 32px); gap: 8px; }
 #toolbar button { padding: 8px 12px; border-radius: 8px; border: 1px solid #333; background: #1b1b22; color: #eee; cursor: pointer; }
 #toolbar button.active { background: #f5c400; color: #000; }
+#toolbar #btn-audio { min-width: 94px; }
+#toolbar #btn-audio:focus-visible { outline: 2px solid #f5c400; outline-offset: 2px; }
 #toolbar button:disabled { opacity: .4; cursor: not-allowed; }
 #legend { position: absolute; left: 16px; bottom: 16px; font-size: 13px; color: #bbb; }
 #legend i { display: inline-block; width: 12px; height: 12px; margin: 0 6px 0 12px; border-radius: 3px; vertical-align: -1px; }

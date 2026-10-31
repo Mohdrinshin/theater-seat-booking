@@ -6,7 +6,7 @@ const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({
 
 export function renderPanel(el, { show, shows = [], seats, onBook, busy, error, paymentMessage, onRetry, onShowChange }) {
   if (error) {
-    el.innerHTML = `<div class="error-state"><h2>Theater unavailable</h2><p>${error}</p><button id="retry">Retry connection</button></div>`;
+    el.innerHTML = `<div class="error-state"><h2>Theater unavailable</h2><p>${escapeHtml(error)}</p><button id="retry">Retry connection</button></div>`;
     el.querySelector('#retry').onclick = onRetry;
     return;
   }
