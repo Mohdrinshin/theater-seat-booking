@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 
 export function createScreenTexture() {
-  const canvas = document.createElement('canvas'); canvas.width = 1024; canvas.height = 448;
+  const canvas = document.createElement('canvas'); canvas.width = 2048; canvas.height = 896;
   const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
   const sky = ctx.createLinearGradient(0, 0, 0, 448);
   sky.addColorStop(0, '#111a30'); sky.addColorStop(.52, '#a96c62'); sky.addColorStop(.72, '#e6b583'); sky.addColorStop(1, '#170f18');
   ctx.fillStyle = sky; ctx.fillRect(0, 0, 1024, 448);

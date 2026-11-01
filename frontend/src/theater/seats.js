@@ -7,6 +7,16 @@ import { seatPosition } from './layout.js';
 const SELECTED = new THREE.Color('#c9a46a');
 const OCCUPIED = new THREE.Color('#343438');
 
+function finishWithVariation(matKey, data) {
+  const color = finishColor(matKey, data.colors || {});
+  if (matKey === 'leather' || matKey === 'fabric') {
+    const seed = String(data.id ?? `${data.row_label || data.row}-${data.seat_number || data.number}`)
+      .split('').reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 17);
+    color.multiplyScalar(.96 + (seed % 801) / 10000);
+  }
+  return color;
+}
+
 export class SeatManager {
   constructor(scene) {
     this.scene = scene; this.group = new THREE.Group(); scene.add(this.group);
@@ -14,7 +24,9 @@ export class SeatManager {
   }
 
   build(seats) {
+    this.clearContactShadow();
     this.group.clear(); this.byId.clear(); this.selected.clear(); this.meshes = [];
+    this.addContactShadows(seats);
     const buckets = new Map();
     for (const data of seats) {
       const designKey = SEAT_DESIGN_BY_KEY[data.design] ? data.design : 'classic';
@@ -42,7 +54,7 @@ export class SeatManager {
           );
           mesh.setMatrixAt(index, outer);
           mesh.userData.instanceSeatIds[index] = data.id;
-          mesh.setColorAt(index, finishColor(matKey, data.colors || design.defaultFinish));
+          mesh.setColorAt(index, finishWithVariation(matKey, { ...data, colors: data.colors || design.defaultFinish }));
           if (!this.byId.has(data.id)) this.byId.set(data.id, { data, instances: [] });
           this.byId.get(data.id).instances.push({ mesh, index, matKey });
         });
@@ -56,7 +68,7 @@ export class SeatManager {
     const entry = this.byId.get(id); if (!entry) return;
     const state = entry.data.status === 'occupied' ? 'occupied' : this.selected.has(id) ? 'selected' : 'available';
     for (const { mesh, index, matKey } of entry.instances) {
-      const color = state === 'occupied' ? OCCUPIED : state === 'selected' ? SELECTED : finishColor(matKey, entry.data.colors || {});
+      const color = state === 'occupied' ? OCCUPIED : state === 'selected' ? SELECTED : finishWithVariation(matKey, entry.data);
       mesh.setColorAt(index, color);
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
@@ -74,5 +86,34 @@ export class SeatManager {
     const hit = raycaster.intersectObjects(this.group.children, false)[0];
     return hit?.object?.userData?.instanceSeatIds?.[hit.instanceId];
   }
-  dispose() { this.group.removeFromParent(); this.group.clear(); this.byId.clear(); this.selected.clear(); this.meshes = []; }
+  addContactShadows(seats) {
+    if (!seats.length) return;
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+    const context = canvas.getContext('2d');
+    const gradient = context.createRadialGradient(64, 64, 4, 64, 64, 62);
+    gradient.addColorStop(0, 'rgba(7,3,5,.28)'); gradient.addColorStop(.58, 'rgba(7,3,5,.14)'); gradient.addColorStop(1, 'rgba(7,3,5,0)');
+    context.fillStyle = gradient; context.fillRect(0, 0, 128, 128);
+    const texture = new THREE.CanvasTexture(canvas);
+    const geometry = new THREE.PlaneGeometry(1.18, .92);
+    const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const shadows = new THREE.InstancedMesh(geometry, material, seats.length);
+    shadows.name = 'seat contact shadows'; shadows.renderOrder = 1;
+    const temp = new THREE.Object3D();
+    seats.forEach((seat, index) => {
+      const fallback = seatPosition(seat.row, seat.number);
+      const p = Number.isFinite(seat.x) && Number.isFinite(seat.z) ? seat : fallback;
+      temp.position.set(p.x, (p.y || 0) + .008, p.z); temp.rotation.set(-Math.PI / 2, 0, 0); temp.updateMatrix();
+      shadows.setMatrixAt(index, temp.matrix);
+    });
+    shadows.instanceMatrix.needsUpdate = true; this.group.add(shadows);
+    this.contactShadow = { geometry, material, texture };
+  }
+
+  clearContactShadow() {
+    if (!this.contactShadow) return;
+    this.contactShadow.geometry.dispose(); this.contactShadow.material.dispose(); this.contactShadow.texture.dispose();
+    this.contactShadow = null;
+  }
+
+  dispose() { this.clearContactShadow(); this.group.removeFromParent(); this.group.clear(); this.byId.clear(); this.selected.clear(); this.meshes = []; }
 }

@@ -28,6 +28,12 @@ scene = new CinemaScene($('cinema-canvas'), {
     const el = $('toast'); el.textContent = message; el.classList.add('show');
     clearTimeout(el.timer); el.timer = setTimeout(() => el.classList.remove('show'), 2100);
   },
+  modeChanged: mode => {
+    document.querySelectorAll('.mode').forEach(item => item.classList.toggle('active', item.dataset.mode === mode));
+    $('reticle').classList.toggle('visible', mode === 'walk');
+    $('help-pill').classList.add('visible');
+    $('help-pill').innerHTML = 'W A S D <span>move</span><i>·</i> drag <span>look</span><i>·</i> double-click <span>seat preview</span><b>ESC</b><span>stand</span>';
+  },
 });
 
 audio = new Audio('/assets/audio/ambience.mp3');
@@ -55,7 +61,11 @@ document.querySelectorAll('.mode').forEach(button => button.addEventListener('cl
   document.querySelectorAll('.mode').forEach(item => item.classList.toggle('active', item === button));
   scene.setMode(button.dataset.mode);
   $('reticle').classList.toggle('visible', button.dataset.mode === 'walk');
-  if (button.dataset.mode === 'orbit') $('help-pill').classList.remove('visible');
+  const help = $('help-pill');
+  help.classList.add('visible');
+  help.innerHTML = button.dataset.mode === 'orbit'
+    ? 'DRAG <span>rotate</span><i>·</i> RIGHT-DRAG <span>pan</span><i>·</i> SCROLL <span>zoom</span><i>·</i> WASD <span>move</span><i>·</i> Q/E <span>height</span>'
+    : 'W A S D <span>move</span><i>·</i> drag <span>look</span><i>·</i> double-click <span>seat preview</span><b>ESC</b><span>stand</span>';
 }));
 
 $('back-row').addEventListener('click', () => {
@@ -65,7 +75,8 @@ $('back-row').addEventListener('click', () => {
   scene.orbit.target.set(0, 2.9, -15);
   scene.orbit.update();
   $('reticle').classList.remove('visible');
-  $('help-pill').classList.remove('visible');
+  $('help-pill').classList.add('visible');
+  $('help-pill').innerHTML = 'DRAG <span>rotate</span><i>·</i> RIGHT-DRAG <span>pan</span><i>·</i> SCROLL <span>zoom</span><i>·</i> WASD <span>move</span><i>·</i> Q/E <span>height</span>';
 });
 
 $('audio-toggle').addEventListener('click', async () => {

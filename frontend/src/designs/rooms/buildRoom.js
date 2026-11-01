@@ -3,13 +3,29 @@ import { ROOM_THEME_BY_KEY } from './themes.js';
 import { computeRoomLayout } from './layout.js';
 import { addWallStyle } from './wallStyles.js';
 
-export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesign = null, quality = 'high') {
+export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesign = null, quality = 'high', pbr = null) {
   const theme = ROOM_THEME_BY_KEY[themeKey] || ROOM_THEME_BY_KEY.multiplex;
   const group = new THREE.Group(); group.name = `room-theme-${theme.key}`; scene.add(group);
+  const ownedTextures = [];
+  const makeMaps = (source, repeatX = 1, repeatY = 1) => {
+    if (!source) return {};
+    const maps = {};
+    for (const [key, texture] of Object.entries(source)) {
+      const clone = texture.clone(); clone.wrapS = clone.wrapT = THREE.RepeatWrapping;
+      clone.repeat.set(repeatX, repeatY); clone.needsUpdate = true;
+      maps[key] = clone; ownedTextures.push(clone);
+    }
+    return maps;
+  };
+  const mapOptions = (maps) => Object.fromEntries([
+    ['map', maps.albedo], ['normalMap', maps.normal], ['roughnessMap', maps.roughness], ['metalnessMap', maps.metalness],
+  ].filter(([, value]) => value));
   const roomLayout = computeRoomLayout(theme, seatDesign || theme.defaultSeat, layoutOverrides);
-  const carpetMap = theme.style === 'crimson-premiere' ? createCarpetTexture(room.width, room.depth) : null;
-  const carpet = new THREE.MeshStandardMaterial({ color: theme.palette.carpet, roughness: .98, map: carpetMap });
-  const dark = new THREE.MeshStandardMaterial({ color: '#161619', roughness: .75, metalness: .35 });
+  const carpetMap = theme.style === 'crimson-premiere' && !pbr?.carpet_red ? createCarpetTexture(room.width, room.depth) : null;
+  const carpet = new THREE.MeshPhysicalMaterial({ color: theme.palette.carpet, roughness: .98, map: carpetMap });
+  const dark = new THREE.MeshPhysicalMaterial({ color: '#161619', roughness: .72, metalness: .3 });
+  const platformMaterials = [];
+  if (pbr?.metal_brushed) Object.assign(dark, mapOptions(makeMaps(pbr.metal_brushed, 1, 1)));
   const emissive = new THREE.MeshStandardMaterial({ color: '#ffcf8a', emissive: '#ffbb64', emissiveIntensity: .6, roughness: .45 });
   const rows = layoutOverrides.anchors?.length
     ? [...new Map(layoutOverrides.anchors.map((seat) => [seat.row_label || seat.row, seat])).values()].sort((a, b) => a.z - b.z)
@@ -66,10 +82,12 @@ export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesig
     }
     anchors.push({ row: row.row_label, z, y });
   });
-  addWallStyle(group, room, theme);
+  addWallStyle(group, room, theme, pbr, ownedTextures);
   if (theme.palette.curtain) {
     for (const side of [-1, 1]) {
-      const curtain = new THREE.Mesh(new THREE.PlaneGeometry(.95, room.height * .78), new THREE.MeshStandardMaterial({ color: theme.palette.curtain, roughness: .92, side: THREE.DoubleSide }));
+      const velvetMaps = pbr?.velvet_curtain ? makeMaps(pbr.velvet_curtain, 1, 2) : {};
+      const curtainMat = new THREE.MeshPhysicalMaterial({ color: theme.palette.curtain, roughness: .92, side: THREE.DoubleSide, ...mapOptions(velvetMaps) });
+      const curtain = new THREE.Mesh(new THREE.PlaneGeometry(.95, room.height * .78), curtainMat);
       curtain.position.set(side * Math.min(room.width * .4, 9), room.height * .39, .45); group.add(curtain);
     }
   }
@@ -87,12 +105,20 @@ export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesig
   }
   return { scene: group, seatAnchors: anchors, cameras: {}, layout: roomLayout, dispose() {
     group.traverse((obj) => { obj.geometry?.dispose(); if (obj.material && !Array.isArray(obj.material)) obj.material.dispose(); });
+    ownedTextures.forEach((texture) => texture.dispose());
     carpetMap?.dispose();
     group.removeFromParent();
   } };
 
   function addPlatform(x, width, y, z, depth) {
-    const platform = new THREE.Mesh(new THREE.BoxGeometry(width, .12, depth), carpet);
+    const platformMat = pbr?.carpet_red
+      ? new THREE.MeshPhysicalMaterial({
+        color: theme.palette.carpet, roughness: .98, metalness: 0,
+        ...mapOptions(makeMaps(pbr.carpet_red, width / 1.5, depth / 1.5)),
+      })
+      : carpet;
+    if (platformMat !== carpet) platformMaterials.push(platformMat);
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(width, .12, depth), platformMat);
     platform.position.set(x, y - .06, z + depth / 2); platform.receiveShadow = true; group.add(platform);
   }
 }

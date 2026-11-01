@@ -34,6 +34,7 @@ export class CinemaScene {
     this.isOrbit = false;
     this.clock = new THREE.Clock();
     this.pointerLocked = false;
+    this.lookDrag = null;
     this.touchVector = new THREE.Vector2();
     this.initRenderer();
     this.scene = new THREE.Scene();
@@ -47,6 +48,10 @@ export class CinemaScene {
     this.orbit = new OrbitControls(this.camera, canvas);
     this.orbit.target.set(0, 3.1, -7.5);
     this.orbit.enableDamping = true;
+    this.orbit.enablePan = true;
+    this.orbit.minDistance = 2.2;
+    this.orbit.maxDistance = 56;
+    this.orbit.maxPolarAngle = Math.PI * .49;
     this.orbit.enabled = false;
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
@@ -610,38 +615,69 @@ export class CinemaScene {
   bind() {
     this.onResize = () => { this.camera.aspect = innerWidth / innerHeight; this.camera.updateProjectionMatrix(); this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.weakGPU ? 1.1 : 1.7)); this.renderer.setSize(innerWidth, innerHeight); this.composer?.setSize(innerWidth, innerHeight); };
     addEventListener('resize', this.onResize);
-    this.onKey = e => { if (e.code === 'Escape' && this.sitting) this.stand(); this.keys.add(e.code); };
+    this.onKey = e => {
+      if (e.code === 'Escape' && this.sitting) this.stand();
+      if (this.isOrbit && ['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+      this.keys.add(e.code);
+    };
     this.onKeyUp = e => this.keys.delete(e.code);
     addEventListener('keydown', this.onKey); addEventListener('keyup', this.onKeyUp);
     this.onMouseMove = e => {
-      if (this.pointerLocked && this.walking && !this.sitting) { this.yaw -= e.movementX * .0022; this.pitch = THREE.MathUtils.clamp(this.pitch - e.movementY * .0018, -1.05, .7); }
+      if (this.lookDrag && this.walking) {
+        const dx = e.clientX - this.lookDrag.x, dy = e.clientY - this.lookDrag.y;
+        this.lookDrag.x = e.clientX; this.lookDrag.y = e.clientY;
+        this.yaw -= dx * .0032; this.pitch = THREE.MathUtils.clamp(this.pitch - dy * .0026, -1.05, .7); this.syncRotation();
+      } else if (this.pointerLocked && this.walking) {
+        this.yaw -= e.movementX * .0022; this.pitch = THREE.MathUtils.clamp(this.pitch - e.movementY * .0018, -1.05, .7); this.syncRotation();
+      }
     };
     document.addEventListener('mousemove', this.onMouseMove);
     this.onLockChange = () => { this.pointerLocked = document.pointerLockElement === this.canvas; };
     document.addEventListener('pointerlockchange', this.onLockChange);
-    this.onClick = e => { if (!this.walking || this.isOrbit) { this.pick(e); return; } if (document.pointerLockElement !== this.canvas) this.canvas.requestPointerLock?.(); this.pick(e); };
+    this.onPointerDown = e => {
+      if (this.walking && e.button === 0 && !e.target.closest('button, a')) {
+        this.lookDrag = { x: e.clientX, y: e.clientY };
+        this.canvas.setPointerCapture?.(e.pointerId);
+      }
+    };
+    this.onPointerUp = () => { this.lookDrag = null; };
+    this.canvas.addEventListener('pointerdown', this.onPointerDown);
+    this.canvas.addEventListener('pointerup', this.onPointerUp);
+    this.canvas.addEventListener('pointercancel', this.onPointerUp);
+    this.onClick = e => { this.pick(e); };
+    this.onDoubleClick = e => {
+      const hit = this.pick(e, { toggleScreen: false });
+      if (hit?.seat) this.sit(hit.seat);
+    };
     this.canvas.addEventListener('click', this.onClick);
+    this.canvas.addEventListener('dblclick', this.onDoubleClick);
     this.orbit.addEventListener('change', () => {});
     this.onContext = e => e.preventDefault(); this.canvas.addEventListener('contextmenu', this.onContext);
   }
 
-  pick(event) {
+  pick(event, { toggleScreen = true } = {}) {
     const rect = this.canvas.getBoundingClientRect();
     this.pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hit = this.raycaster.intersectObject(this.screen, false)[0];
-    if (hit && hit.distance < 35) { this.toggleVideo(); return; }
+    if (hit && hit.distance < 35) { if (toggleScreen) this.toggleVideo(); return { screen: true }; }
     const seatHit = this.raycaster.intersectObjects(this.seatHits.map(x => x.mesh), false)[0];
-    if (!seatHit || seatHit.instanceId == null) return;
+    if (!seatHit || seatHit.instanceId == null) return null;
     const entry = this.seatHits.find(x => x.mesh === seatHit.object);
     const seat = entry?.data[seatHit.instanceId];
-    if (seat) this.sit(seat);
+    return seat ? { seat } : null;
   }
 
   sit(seat) {
+    if (this.isOrbit) { this.setMode('walk'); this.callbacks.modeChanged?.('walk'); }
     this.sitting = true; this.pointerLocked && document.exitPointerLock?.();
-    this.camera.position.set(seat.x, seat.y + 1.25, seat.z + .58);
-    this.yaw = 0; this.pitch = -.09; this.syncRotation();
+    // Place the viewer just ahead of the backrest and slightly toward the aisle so the next row does not block the screen.
+    const aisleOffset = seat.x < 0 ? .46 : -.46;
+    this.camera.position.set(seat.x + aisleOffset, seat.y + 1.63, seat.z - .34);
+    const view = new THREE.Vector3(0, 5.3, -17.1).sub(this.camera.position).normalize();
+    this.yaw = Math.atan2(-view.x, -view.z);
+    this.pitch = Math.asin(THREE.MathUtils.clamp(view.y, -1, 1));
+    this.syncRotation();
     this.callbacks.toast?.(`You’re seated · ${seat.label}`);
   }
 
@@ -656,7 +692,16 @@ export class CinemaScene {
   }
 
   setMode(mode) {
-    this.isOrbit = mode === 'orbit'; this.orbit.enabled = this.isOrbit; this.walking = !this.isOrbit;
+    const nextIsOrbit = mode === 'orbit';
+    if (nextIsOrbit && !this.isOrbit) this.sitting = false;
+    if (!nextIsOrbit && this.isOrbit) {
+      const direction = this.camera.getWorldDirection(new THREE.Vector3());
+      this.yaw = Math.atan2(-direction.x, -direction.z);
+      this.pitch = Math.asin(THREE.MathUtils.clamp(direction.y, -1, 1));
+      this.syncRotation();
+    }
+    this.isOrbit = nextIsOrbit; this.orbit.enabled = this.isOrbit; this.walking = !this.isOrbit;
+    this.keys.clear(); this.lookDrag = null;
     if (this.isOrbit && this.pointerLocked) document.exitPointerLock?.();
   }
 
@@ -672,6 +717,24 @@ export class CinemaScene {
       this.camera.position.y += Math.sin(t * .17) * .018;
       this.camera.lookAt(this.introLookTarget.x + Math.sin(t * .18) * .025, this.introLookTarget.y, this.introLookTarget.z);
     }
+    if (this.isOrbit) {
+      const f = Number(this.keys.has('KeyW') || this.keys.has('ArrowUp')) - Number(this.keys.has('KeyS') || this.keys.has('ArrowDown'));
+      const s = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) - Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft'));
+      const v = Number(this.keys.has('KeyE')) - Number(this.keys.has('KeyQ'));
+      const view = this.camera.getWorldDirection(new THREE.Vector3());
+      const forward = new THREE.Vector3(view.x, 0, view.z).normalize();
+      const right = new THREE.Vector3(-forward.z, 0, forward.x);
+      const delta = forward.multiplyScalar(f).add(right.multiplyScalar(s));
+      delta.y = v;
+      if (delta.lengthSq()) {
+        delta.normalize().multiplyScalar((this.keys.has('ShiftLeft') ? 7 : 3.2) * dt);
+        const target = this.orbit.target.clone().add(delta);
+        target.x = THREE.MathUtils.clamp(target.x, -10.5, 10.5);
+        target.y = THREE.MathUtils.clamp(target.y, .3, 10);
+      target.z = THREE.MathUtils.clamp(target.z, -16.4, 19.5);
+        delta.copy(target.sub(this.orbit.target)); this.orbit.target.copy(target); this.camera.position.add(delta);
+      }
+    }
     if (this.walking && !this.sitting) {
       const f = Number(this.keys.has('KeyW') || this.keys.has('ArrowUp')) - Number(this.keys.has('KeyS') || this.keys.has('ArrowDown')) - this.touchVector.y;
       const s = Number(this.keys.has('KeyD') || this.keys.has('ArrowRight')) - Number(this.keys.has('KeyA') || this.keys.has('ArrowLeft')) + this.touchVector.x;
@@ -681,7 +744,7 @@ export class CinemaScene {
       if (move.lengthSq() > 1) move.normalize();
       const speed = this.keys.has('ShiftLeft') ? 4 : 2.2;
       const next = this.camera.position.clone().addScaledVector(move, speed * dt);
-      next.x = THREE.MathUtils.clamp(next.x, -10.7, 10.7); next.z = THREE.MathUtils.clamp(next.z, -14.2, 19.2);
+      next.x = THREE.MathUtils.clamp(next.x, -11.1, 11.1); next.z = THREE.MathUtils.clamp(next.z, -16.4, 19.5);
       for (const seat of this.seats) {
         const dx = next.x - seat.x, dz = next.z - seat.z;
         if (Math.abs(dx) < .65 && Math.abs(dz) < .68) {
@@ -709,7 +772,9 @@ export class CinemaScene {
   dispose() {
     cancelAnimationFrame(this.raf); removeEventListener('resize', this.onResize); removeEventListener('keydown', this.onKey); removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('mousemove', this.onMouseMove); document.removeEventListener('pointerlockchange', this.onLockChange);
-    this.canvas.removeEventListener('click', this.onClick); this.canvas.removeEventListener('contextmenu', this.onContext);
+    this.canvas.removeEventListener('click', this.onClick); this.canvas.removeEventListener('dblclick', this.onDoubleClick);
+    this.canvas.removeEventListener('pointerdown', this.onPointerDown); this.canvas.removeEventListener('pointerup', this.onPointerUp); this.canvas.removeEventListener('pointercancel', this.onPointerUp);
+    this.canvas.removeEventListener('contextmenu', this.onContext);
     this.orbit.dispose(); this.video.pause(); this.video.removeAttribute('src'); this.video.load();
     this.scene.traverse(object => { object.geometry?.dispose?.(); if (Array.isArray(object.material)) object.material.forEach(m => m.dispose()); else object.material?.dispose?.(); });
     for (const key of ['leather_red','leather_grey','carpet_red','wall_fabric','ceiling_black','metal_brushed']) for (const texture of Object.values(this[key] || {})) texture.dispose();

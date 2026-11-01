@@ -8,9 +8,20 @@ function instanced(scene, geometry, material, positions, scale = [1, 1, 1]) {
   mesh.receiveShadow = mesh.castShadow = true; scene.add(mesh);
 }
 
-export function addWallStyle(scene, room, theme) {
+export function addWallStyle(scene, room, theme, pbr = null, ownedTextures = []) {
   const positions = [], size = room.depth;
-  const wall = new THREE.MeshStandardMaterial({ color: theme.palette.feature, roughness: .92 });
+  const wallMaps = {};
+  for (const [key, source] of Object.entries(pbr?.wall_fabric || {})) {
+    const texture = source.clone(); texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(1, 1); texture.needsUpdate = true;
+    wallMaps[key] = texture; ownedTextures.push(texture);
+  }
+  const wall = new THREE.MeshPhysicalMaterial({
+    color: theme.palette.wall, roughness: .92, sheen: .35, sheenRoughness: .8,
+    ...(wallMaps.albedo ? { map: wallMaps.albedo } : {}),
+    ...(wallMaps.normal ? { normalMap: wallMaps.normal } : {}),
+    ...(wallMaps.roughness ? { roughnessMap: wallMaps.roughness } : {}),
+    ...(wallMaps.metalness ? { metalnessMap: wallMaps.metalness } : {}),
+  });
   const style = theme.style;
   if (style === 'crimson-premiere') {
     for (const side of [-1, 1]) {
