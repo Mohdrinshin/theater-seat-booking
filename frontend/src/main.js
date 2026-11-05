@@ -11,6 +11,7 @@ const panel = document.getElementById('panel');
 const btnOrbit = document.getElementById('btn-orbit');
 const btnSeat = document.getElementById('btn-seat');
 const btnAudio = document.getElementById('btn-audio');
+const btnQuality = document.getElementById('btn-quality');
 const btnBuilder = document.getElementById('btn-builder');
 const builderRoot = document.getElementById('builder');
 const ambience = new Audio('/assets/audio/ambience.mp3');
@@ -25,6 +26,21 @@ let selectedShowId = null;
 let busy = false;
 let loadError = '';
 let paymentMessage = '';
+const QUALITY_MODES = ['auto', 'high', 'medium', 'low'];
+let qualityMode = (() => {
+  try {
+    const stored = localStorage.getItem('theater-render-quality');
+    return QUALITY_MODES.includes(stored) ? stored : 'auto';
+  } catch { return 'auto'; }
+})();
+
+function updateQualityButton(state = theater?.getQualityState?.()) {
+  const label = qualityMode === 'auto' ? 'Auto' : qualityMode[0].toUpperCase() + qualityMode.slice(1);
+  btnQuality.textContent = `Quality: ${label}`;
+  const detail = state?.quality ? ` Current level: ${state.quality}.` : '';
+  btnQuality.setAttribute('aria-label', `Rendering quality: ${label}.${detail}`);
+  btnQuality.title = `Click to change quality. Auto selects quality based on device performance.${detail}`;
+}
 
 async function load() {
   loadError = '';
@@ -50,7 +66,9 @@ async function load() {
     theater = createTheater(document.getElementById('canvas-wrap'), {
       room: hall ? { width: hall.room_width, depth: hall.room_depth, height: hall.room_height } : undefined,
       screen: hall?.screen, theme: hall?.room_theme, themeOptions: hall?.theme_options, seats: showSeats,
+      qualityMode, onQualityChange: updateQualityButton,
     });
+    updateQualityButton();
     seats = new SeatManager(theater.scene);
     seats.build(showSeats);
     bindSeatPicking();
@@ -204,6 +222,15 @@ btnSeat.onclick = () => {
   btnSeat.classList.add('active'); btnOrbit.classList.remove('active');
 };
 btnOrbit.classList.add('active');
+
+btnQuality.onclick = () => {
+  const index = QUALITY_MODES.indexOf(qualityMode);
+  qualityMode = QUALITY_MODES[(index + 1) % QUALITY_MODES.length];
+  try { localStorage.setItem('theater-render-quality', qualityMode); } catch { /* preference persistence is optional */ }
+  theater?.setQualityMode(qualityMode);
+  updateQualityButton();
+};
+updateQualityButton();
 
 btnAudio.onclick = async () => {
   if (ambienceOn) {

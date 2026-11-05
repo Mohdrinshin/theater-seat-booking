@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { ROOM_THEME_BY_KEY } from './themes.js';
 import { computeRoomLayout } from './layout.js';
 import { addWallStyle } from './wallStyles.js';
+import { THEATER_LIGHTING } from '../lighting.js';
 
 export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesign = null, quality = 'high', pbr = null) {
   const theme = ROOM_THEME_BY_KEY[themeKey] || ROOM_THEME_BY_KEY.multiplex;
@@ -26,7 +27,7 @@ export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesig
   const dark = new THREE.MeshPhysicalMaterial({ color: '#161619', roughness: .72, metalness: .3 });
   const platformMaterials = [];
   if (pbr?.metal_brushed) Object.assign(dark, mapOptions(makeMaps(pbr.metal_brushed, 1, 1)));
-  const emissive = new THREE.MeshStandardMaterial({ color: '#ffcf8a', emissive: '#ffbb64', emissiveIntensity: .6, roughness: .45 });
+  const emissive = new THREE.MeshStandardMaterial({ color: THEATER_LIGHTING.accents.stepBaseColor, emissive: THEATER_LIGHTING.accents.stepEmissiveColor, emissiveIntensity: THEATER_LIGHTING.accents.stepEmissive, roughness: .45 });
   const rows = layoutOverrides.anchors?.length
     ? [...new Map(layoutOverrides.anchors.map((seat) => [seat.row_label || seat.row, seat])).values()].sort((a, b) => a.z - b.z)
     : Array.from({ length: theme.layout.rows }, (_, i) => ({ z: theme.layout.front + i * roomLayout.pitch, y: i * theme.layout.riser, row_label: `${i}` }));
@@ -140,8 +141,8 @@ export function createCarpetTexture(width, depth) {
 }
 
 function addCrimsonCeiling(group, room, theme) {
-  const light = new THREE.MeshStandardMaterial({ color: theme.palette.light, emissive: theme.palette.light, emissiveIntensity: 1.6, roughness: .25, toneMapped: false });
-  const amber = new THREE.MeshStandardMaterial({ color: theme.palette.amber, emissive: theme.palette.amber, emissiveIntensity: 1.3, roughness: .3, toneMapped: false });
+  const light = new THREE.MeshStandardMaterial({ color: theme.palette.light, emissive: theme.palette.light, emissiveIntensity: THEATER_LIGHTING.accents.stepEmissive, roughness: .25, toneMapped: false });
+  const amber = new THREE.MeshStandardMaterial({ color: theme.palette.amber, emissive: theme.palette.amber, emissiveIntensity: THEATER_LIGHTING.accents.stepEmissive, roughness: .3, toneMapped: false });
   const trim = (width, height, depth, x, y, z, material = light) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
     mesh.position.set(x, y, z); mesh.userData.accent = true; group.add(mesh);
@@ -151,13 +152,14 @@ function addCrimsonCeiling(group, room, theme) {
   trim(.045, .045, room.depth - 1, room.width * .46, y, room.depth / 2);
   for (let z = 1.3; z < room.depth - 1; z += 2.6) {
     trim(room.width * .92, .055, .07, 0, y, z, z % 5.2 < 2.6 ? light : amber);
-    for (const side of [-1, 1]) {
-      const spot = new THREE.SpotLight(0xffe8cf, 12, 9, Math.PI / 5, .72, 1.8);
-      spot.position.set(side * room.width * .36, room.height - .28, z);
-      spot.target.position.set(side * room.width * .25, .25, z + .4);
-      spot.userData.accent = true; spot.target.userData.accent = true;
-      group.add(spot, spot.target);
-    }
+  }
+  for (const z of [room.depth * .25, room.depth * .76]) for (const side of [-1, 1]) {
+    const roomSpot = THEATER_LIGHTING.accents.roomSpot;
+    const spot = new THREE.SpotLight(roomSpot.color, roomSpot.intensity, roomSpot.distance, roomSpot.angle, roomSpot.penumbra, roomSpot.decay);
+    spot.position.set(side * room.width * .36, room.height - .28, z);
+    spot.target.position.set(side * room.width * .25, .25, z + .4);
+    spot.userData.accent = true; spot.target.userData.accent = true;
+    group.add(spot, spot.target);
   }
   trim(room.width * .88, .12, .14, 0, room.height - .09, 1.1, amber);
 }

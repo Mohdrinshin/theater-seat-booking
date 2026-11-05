@@ -2,14 +2,16 @@ import * as THREE from 'three';
 import { SEAT_DESIGN_BY_KEY } from '../designs/registry.js';
 import { bakeSeat } from '../designs/geometry/bake.js';
 import { finishColor, getMaterialLibrary } from '../designs/materials/library.js';
+import { THEATER_LIGHTING } from '../designs/lighting.js';
 import { seatPosition } from './layout.js';
 
-const SELECTED = new THREE.Color('#c9a46a');
-const OCCUPIED = new THREE.Color('#343438');
+const SELECTED = new THREE.Color(THEATER_LIGHTING.seats.selectedColor);
+const OCCUPIED = new THREE.Color(THEATER_LIGHTING.seats.occupiedColor);
 
 function finishWithVariation(matKey, data) {
   const color = finishColor(matKey, data.colors || {});
   if (matKey === 'leather' || matKey === 'fabric') {
+    color.multiplyScalar(THEATER_LIGHTING.seats.availableBrightness);
     const seed = String(data.id ?? `${data.row_label || data.row}-${data.seat_number || data.number}`)
       .split('').reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 17);
     color.multiplyScalar(.96 + (seed % 801) / 10000);

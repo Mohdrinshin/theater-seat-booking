@@ -1,8 +1,8 @@
 * { box-sizing: border-box; }
-body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color: #eee; overflow: hidden; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color: #eee; overflow: hidden; overscroll-behavior: none; }
 #app { display: grid; grid-template-columns: 1fr 340px; height: 100vh; position: relative; }
-#canvas-wrap { position: relative; min-width: 0; }
-#canvas-wrap canvas { display: block; }
+#canvas-wrap { position: relative; min-width: 0; overscroll-behavior: contain; }
+#canvas-wrap canvas { display: block; touch-action: none; overscroll-behavior: contain; }
 #panel { padding: 20px; background: #14141a; border-left: 1px solid #26262e; overflow: auto; }
 #panel .show-picker { display: block; color: #999; font-size: 12px; margin-bottom: 16px; }
 #panel .show-picker select { display: block; width: 100%; margin-top: 6px; padding: 9px; color: #eee; background: #202027; border: 1px solid #3b3c45; border-radius: 7px; }
@@ -21,9 +21,10 @@ body { margin: 0; font-family: system-ui, sans-serif; background: #0b0b0f; color
 #toolbar button { padding: 8px 12px; border-radius: 8px; border: 1px solid #333; background: #1b1b22; color: #eee; cursor: pointer; }
 #toolbar button.active { background: #f5c400; color: #000; }
 #toolbar #btn-audio { min-width: 94px; }
+#toolbar #btn-quality { padding-inline: 10px; font-size: 11px; white-space: nowrap; }
 #toolbar #btn-audio:focus-visible { outline: 2px solid #f5c400; outline-offset: 2px; }
 #toolbar button:disabled { opacity: .4; cursor: not-allowed; }
-#legend { position: absolute; left: 16px; bottom: 16px; font-size: 13px; color: #bbb; }
+#legend { position: absolute; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 160px); padding: 7px 9px; border: 1px solid #ffffff12; border-radius: 8px; background: #101116bf; font-size: 12px; color: #bbb; text-align: right; }
 #legend i { display: inline-block; width: 12px; height: 12px; margin: 0 6px 0 12px; border-radius: 3px; vertical-align: -1px; }
 .av { background: #c0262d; } .se { background: #f5c400; } .oc { background: #444; }
 

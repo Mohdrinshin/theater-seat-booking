@@ -7,15 +7,17 @@
   </head>
   <body>
     <div id="app">
-      <div id="canvas-wrap"></div>
+      <div id="canvas-wrap">
+        <div id="legend"><i class="av"></i>Available <i class="se"></i>Selected <i class="oc"></i>Occupied</div>
+      </div>
       <aside id="panel"></aside>
       <div id="toolbar">
         <button id="btn-orbit">Orbit</button>
         <button id="btn-seat" disabled>View from seat</button>
         <button id="btn-audio" type="button" aria-label="Turn ambience on" aria-pressed="false">Sound: Off</button>
+        <button id="btn-quality" type="button" aria-label="Rendering quality: Auto">Quality: Auto</button>
         <button id="btn-builder">Owner studio</button>
       </div>
-      <div id="legend"><i class="av"></i>Available <i class="se"></i>Selected <i class="oc"></i>Occupied</div>
     </div>
     <section id="builder" hidden></section>
     <script type="module" src="/src/main.js"></script>

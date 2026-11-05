@@ -1,0 +1,23 @@
+export const THEATER_LIGHTING = Object.freeze({
+  render: {
+    exposure: 1.8,
+    environment: { low: 0.22, medium: 0.25, high: 0.28 },
+  },
+  ambient: { color: 0xb47c73, intensity: 0.8 },
+  hemisphere: { sky: 0x9b7784, ground: 0x26110f, intensity: 1.2 },
+  screenArea: { color: 0xdceaff, intensity: 5, widthScale: 0.8, heightScale: 0.8, surfaceOffset: 0.24, targetYScale: 0.55, targetZScale: 0.45 },
+  screenFill: { color: 0xffc1a1, intensity: 14.5, lowIntensity: 8, distanceScale: 0.8, yScale: 0.85, zOffset: 2.8, decay: 2, pulseAmplitude: 0.35, pulseRate: 1.2 },
+  screenLowerFill: { color: 0xf06a60, intensity: 2.5, distanceScale: 0.47, y: 2.8, zOffset: 6.5, decay: 2 },
+  screenKey: { color: 0xffc5a5, intensity: 1.2, distanceScale: 1.3, angle: Math.PI / 3, penumbra: 0.8, decay: 1.2, targetYFloor: 0.5, targetYScale: 0.55, targetZScale: 0.35 },
+  ceilingSpot: { color: 0xffc68c, intensity: 30, distanceScale: 0.72, angle: Math.PI / 6, penumbra: 0.88, decay: 1.25, shadowMap: 768, shadowBias: -0.0002, xScale: 0.36, yOffset: 0.35, targetXScale: 0.28, targetY: 0.45, targetZScale: 0.08, zPositions: [0.24, 0.57, 0.82] },
+  seatSpot: { color: 0xffd3a6, intensity: 20, distanceScale: 0.95, angle: Math.PI / 4, penumbra: 0.9, decay: 1.4, shadowMap: 1024, shadowBias: -0.0002, yScale: 0.92, zScale: 0.68, targetY: 0.5, targetZScale: 0.36 },
+  rim: { color: 0xffd8bd, intensity: 0.45, x: 0, yScale: 0.72, zScale: 0.92, targetY: 0.8, targetZScale: 0.35, shadowMap: 2048, shadowBias: -0.00015 },
+  wallBounce: { color: 0x9b4146, intensity: 1.25, distanceScale: 0.55, sideScale: 0.43, y: 1.5, decay: 2, zPositions: [0.25, 0.72] },
+  wallWash: { color: 0xffb18a, intensity: 1.2, distanceScale: 0.48, yScale: 0.36, sideScale: 0.42, decay: 2, zPositions: [0.2, 0.5, 0.8] },
+  floorPool: { color: 0xffa35c, intensity: 0.75, distance: 5.8, y: 0.28, decay: 2, zPositions: [0.16, 0.36, 0.56, 0.76, 0.92] },
+  aislePool: { color: 0xff9b47, intensity: 0.7, distance: 4.2, y: 0.55, decay: 2, zPositions: [0.28, 0.47, 0.66, 0.83] },
+  bloom: { intensity: 0.8, radius: 0.45, threshold: 1.05 },
+  accents: { stepBaseColor: 0xffcf8a, stepEmissiveColor: 0xffbb64, stepEmissive: 4, ledEmissiveColor: 0xffb35a, wallLineEmissive: 2.2, wallMarkerEmissive: 2.5, exitAccentEmissive: 1.4, roomSpot: { color: 0xffe8cf, intensity: 12, distance: 9, angle: Math.PI / 5, penumbra: 0.72, decay: 1.8 }, wallSconce: { intensity: 0.65, distance: 5.5, decay: 2 } },
+  seats: { availableBrightness: 1.2, selectedColor: 0xffd15a, occupiedColor: 0x62636a, emissiveColor: 0x410d18, emissiveIntensity: 0.16 },
+  view: { orbit: 1, seat: 0.72, transitionSeconds: 0.6 },
+});
