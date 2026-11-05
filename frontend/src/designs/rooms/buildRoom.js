@@ -3,6 +3,7 @@ import { ROOM_THEME_BY_KEY } from './themes.js';
 import { computeRoomLayout } from './layout.js';
 import { addWallStyle } from './wallStyles.js';
 import { THEATER_LIGHTING } from '../lighting.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesign = null, quality = 'high', pbr = null) {
   const theme = ROOM_THEME_BY_KEY[themeKey] || ROOM_THEME_BY_KEY.multiplex;
@@ -23,9 +24,9 @@ export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesig
   ].filter(([, value]) => value));
   const roomLayout = computeRoomLayout(theme, seatDesign || theme.defaultSeat, layoutOverrides);
   const carpetMap = theme.style === 'crimson-premiere' && !pbr?.carpet_red ? createCarpetTexture(room.width, room.depth) : null;
-  const carpet = new THREE.MeshPhysicalMaterial({ color: theme.palette.carpet, roughness: .98, map: carpetMap });
+  const carpetMaps = pbr?.carpet_red ? makeMaps(pbr.carpet_red) : {};
+  const carpet = new THREE.MeshPhysicalMaterial({ color: theme.palette.carpet, roughness: .98, map: carpetMap, ...mapOptions(carpetMaps) });
   const dark = new THREE.MeshPhysicalMaterial({ color: '#161619', roughness: .72, metalness: .3 });
-  const platformMaterials = [];
   if (pbr?.metal_brushed) Object.assign(dark, mapOptions(makeMaps(pbr.metal_brushed, 1, 1)));
   const emissive = new THREE.MeshStandardMaterial({ color: THEATER_LIGHTING.accents.stepBaseColor, emissive: THEATER_LIGHTING.accents.stepEmissiveColor, emissiveIntensity: THEATER_LIGHTING.accents.stepEmissive, roughness: .45 });
   const rows = layoutOverrides.anchors?.length
@@ -104,6 +105,7 @@ export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesig
     addCrimsonCeiling(group, room, theme);
     addWayfindingArrows(group, room);
   }
+  mergeRoomMeshes(group);
   return { scene: group, seatAnchors: anchors, cameras: {}, layout: roomLayout, dispose() {
     group.traverse((obj) => { obj.geometry?.dispose(); if (obj.material && !Array.isArray(obj.material)) obj.material.dispose(); });
     ownedTextures.forEach((texture) => texture.dispose());
@@ -112,15 +114,72 @@ export function buildRoom(scene, themeKey, room, layoutOverrides = {}, seatDesig
   } };
 
   function addPlatform(x, width, y, z, depth) {
-    const platformMat = pbr?.carpet_red
-      ? new THREE.MeshPhysicalMaterial({
-        color: theme.palette.carpet, roughness: .98, metalness: 0,
-        ...mapOptions(makeMaps(pbr.carpet_red, width / 1.5, depth / 1.5)),
-      })
-      : carpet;
-    if (platformMat !== carpet) platformMaterials.push(platformMat);
-    const platform = new THREE.Mesh(new THREE.BoxGeometry(width, .12, depth), platformMat);
+    const geometry = new THREE.BoxGeometry(width, .12, depth);
+    if (pbr?.carpet_red) scaleBoxUVToMeters(geometry, 1.5);
+    const platform = new THREE.Mesh(geometry, carpet);
     platform.position.set(x, y - .06, z + depth / 2); platform.receiveShadow = true; group.add(platform);
+  }
+}
+
+function scaleBoxUVToMeters(geometry, tileSize) {
+  const position = geometry.getAttribute('position');
+  const normal = geometry.getAttribute('normal');
+  const uv = geometry.getAttribute('uv');
+  for (let i = 0; i < position.count; i += 1) {
+    if (Math.abs(normal.getY(i)) > .5) {
+      uv.setXY(i, position.getX(i) / tileSize, position.getZ(i) / tileSize);
+    } else if (Math.abs(normal.getX(i)) > .5) {
+      uv.setXY(i, position.getZ(i) / tileSize, position.getY(i) / tileSize);
+    } else {
+      uv.setXY(i, position.getX(i) / tileSize, position.getY(i) / tileSize);
+    }
+  }
+  uv.needsUpdate = true;
+}
+
+function mergeRoomMeshes(group) {
+  group.updateMatrixWorld(true);
+  const inverseGroup = group.matrixWorld.clone().invert();
+  const buckets = new Map();
+  group.traverse((object) => {
+    if (!object.isMesh || object.isInstancedMesh || object.userData.noMerge || Array.isArray(object.material)) return;
+    const relative = inverseGroup.clone().multiply(object.matrixWorld);
+    const geometry = object.geometry.clone();
+    if (geometry.index) {
+      const nonIndexed = geometry.toNonIndexed();
+      geometry.dispose();
+      nonIndexed.applyMatrix4(relative);
+      addGeometry(object, nonIndexed);
+    } else {
+      geometry.applyMatrix4(relative);
+      addGeometry(object, geometry);
+    }
+
+    function addGeometry(mesh, transformedGeometry) {
+      const attributeShape = Object.entries(transformedGeometry.attributes)
+        .map(([name, attribute]) => `${name}:${attribute.itemSize}:${attribute.normalized}`).sort().join(',');
+      const key = [mesh.material.uuid, mesh.userData.accent === true, mesh.castShadow, mesh.receiveShadow, attributeShape].join('|');
+      if (!buckets.has(key)) buckets.set(key, { material: mesh.material, accent: mesh.userData.accent === true, castShadow: mesh.castShadow, receiveShadow: mesh.receiveShadow, geometries: [], sources: [] });
+      const bucket = buckets.get(key);
+      bucket.geometries.push(transformedGeometry);
+      bucket.sources.push(mesh);
+    }
+  });
+
+  for (const bucket of buckets.values()) {
+    const merged = mergeGeometries(bucket.geometries, false);
+    bucket.geometries.forEach((geometry) => geometry.dispose());
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, bucket.material);
+    mesh.name = 'merged static theater room';
+    mesh.userData.accent = bucket.accent;
+    mesh.castShadow = bucket.castShadow;
+    mesh.receiveShadow = bucket.receiveShadow;
+    group.add(mesh);
+    for (const source of bucket.sources) {
+      source.parent?.remove(source);
+      source.geometry.dispose();
+    }
   }
 }
 
