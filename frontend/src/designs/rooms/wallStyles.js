@@ -34,7 +34,8 @@ export function addWallStyle(scene, room, theme, pbr = null, ownedTextures = [])
       const lamp = new THREE.MeshStandardMaterial({ color: theme.palette.amber, emissive: theme.palette.amber, emissiveIntensity: THEATER_LIGHTING.accents.wallMarkerEmissive, roughness: .3, toneMapped: false });
       const railX = side * (room.width / 2 - .15);
       const span = 3.4;
-      for (let z = 1.2; z < size - 1; z += span) {
+      let panelIndex = 0;
+      for (let z = 1.2; z < size - 1; z += span, panelIndex += 1) {
         const y0 = .5, y1 = room.height - .55;
         for (const lean of [-1, 1]) {
           const z1 = Math.min(size - .35, z + span * .88);
@@ -46,10 +47,12 @@ export function addWallStyle(scene, room, theme, pbr = null, ownedTextures = [])
           bar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize());
           bar.userData.accent = true; scene.add(bar);
         }
-        const sconceConfig = THEATER_LIGHTING.accents.wallSconce;
-        const sconce = new THREE.PointLight(theme.palette.light, sconceConfig.intensity, sconceConfig.distance, sconceConfig.decay);
-        sconce.position.set(railX - side * .45, room.height * .62, z + span * .45);
-        sconce.userData.accent = true; scene.add(sconce);
+        if (panelIndex % 3 === 0) {
+          const sconceConfig = THEATER_LIGHTING.accents.wallSconce;
+          const sconce = new THREE.PointLight(theme.palette.light, sconceConfig.intensity, sconceConfig.distance, sconceConfig.decay);
+          sconce.position.set(railX - side * .45, room.height * .62, z + span * .45);
+          sconce.userData.accent = true; scene.add(sconce);
+        }
         const marker = new THREE.Mesh(new THREE.BoxGeometry(.07, .22, .09), lamp);
         marker.position.set(railX - side * .4, .24, z + span * .45);
         marker.userData.accent = true; scene.add(marker);
